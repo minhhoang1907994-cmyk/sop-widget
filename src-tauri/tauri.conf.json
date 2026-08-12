@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SOP Widget",
+  "version": "0.1.0",
+  "identifier": "asia.nitro.sop-widget",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [{
+      "label": "main",
+      "title": "SOP Widget",
+      "width": 360,
+      "height": 560,
+      "minWidth": 340,
+      "minHeight": 460,
+      "resizable": true,
+      "alwaysOnTop": true,
+      "decorations": false,
+      "transparent": false
+    }],
+    "security": { "csp": null }
+  },
+  "bundle": { "active": true, "targets": "all", "windows": { "nsis": { "displayLanguageSelector": false } } }
+}
