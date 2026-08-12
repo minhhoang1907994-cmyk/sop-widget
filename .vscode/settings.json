@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^python -c \"from pathlib import Path; p=Path\\('D:/sop-widget/dist/assets/index-DCaBGHBb\\.js'\\); txt=p\\.read_text\\(encoding='utf-8', errors='ignore'\\); idx=txt\\.find\\('minimize'\\); print\\(idx\\); print\\(txt\\[idx-100:idx\\+200\\]\\)\n\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
