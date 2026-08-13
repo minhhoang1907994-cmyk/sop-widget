@@ -18,7 +18,7 @@ export type Procedure = {
   steps: Step[];
 };
 
-export type StepInput = Omit<Step, 'id' | 'procedure_id' | 'order_index'>;
+export type StepInput = Omit<Step, 'id' | 'procedure_id' | 'order_index'> & { id?: number };
 export type ProcedureInput = {
   id?: number;
   name: string;

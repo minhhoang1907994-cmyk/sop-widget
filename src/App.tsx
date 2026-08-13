@@ -57,7 +57,7 @@ export default function App() {
     }
   };
   const start = async (id: number) => { try { setBusy(true); const run = await api.startRun(id); setDetails(await api.getRun(run.id)); setView('runner'); } catch (e) { setNotice(String(e)); } finally { setBusy(false); } };
-  const openEditor = (procedure?: Procedure) => { setEditor(procedure ? { id: procedure.id, name: procedure.name, description: procedure.description, category: procedure.category ?? '', steps: procedure.steps.map(s => ({ title: s.title, description: s.description, command: s.command, requires_evidence: s.requires_evidence })) } : newProcedure()); setView('builder'); };
+  const openEditor = (procedure?: Procedure) => { setEditor(procedure ? { id: procedure.id, name: procedure.name, description: procedure.description, category: procedure.category ?? '', steps: procedure.steps.map(s => ({ id: s.id, title: s.title, description: s.description, command: s.command, requires_evidence: s.requires_evidence })) } : newProcedure()); setView('builder'); };
   const save = async () => { if (!editor.name.trim() || editor.steps.some(s => !s.title.trim())) { setNotice('Vui lòng nhập tên quy trình và tiêu đề cho mọi bước.'); return; } try { setBusy(true); await api.saveProcedure(editor); await loadProcedures(); goPicker(); } catch (e) { setNotice(String(e)); } finally { setBusy(false); } };
   const openHistory = async () => { try { setRuns(await api.listRuns()); setView('history'); } catch (e) { setNotice(String(e)); } };
   const currentTitle = view === 'runner' ? details?.procedure.name : view === 'done' ? finished?.procedure.name : view === 'builder' ? 'Quản lý quy trình' : view === 'history' ? 'Lịch sử SOP' : 'SOP Widget';

@@ -56,8 +56,16 @@ src-tauri/
 - FK: `{table_singular}_id` (`procedure_id`, `step_id`, `run_id`); `PRAGMA foreign_keys = ON`.
 - Timestamp: cột TEXT chứa RFC3339 UTC, sinh bằng `now()` (`lib.rs:40`) — `created_at`, `updated_at`,
   `started_at`, `completed_at`, `confirmed_at`, `captured_at`.
-- Soft delete: `procedures.archived INTEGER NOT NULL DEFAULT 0`; xóa quy trình = set `archived=1`
-  (`delete_procedure`, `lib.rs:81`), query list luôn lọc `WHERE archived=0`.
+- Soft delete: `procedures.archived` và `steps.archived` (`INTEGER NOT NULL DEFAULT 0`).
+  **Không bao giờ `DELETE FROM steps`** — `step_executions.step_id` tham chiếu `steps(id)`
+  không có `ON DELETE` rule và foreign key đang bật, nên xóa bước đã có lần chạy sẽ vi phạm
+  ràng buộc. `save_procedure` archive toàn bộ step rồi bật lại `archived=0` cho step còn
+  trong input, giữ nguyên step id để ảnh bằng chứng cũ không mất liên kết.
+- Đọc step luôn qua `procedure_scoped()`, không tự viết query `FROM steps`:
+  - `run_id=None` → chỉ step đang dùng (editor, picker, lần chạy mới)
+  - lần chạy đang diễn ra → step đang dùng + step đã archive nhưng đã thực hiện trong run đó
+  - lần chạy `completed`/`cancelled` → chỉ step đã thực hiện, để step thêm sau không lọt
+    vào báo cáo cũ
 - Idempotent write dùng `INSERT ... ON CONFLICT(run_id,step_id) DO UPDATE SET excluded.*`
   dựa trên `UNIQUE(run_id, step_id)` của `step_executions`.
 - **Luôn dùng `params![]` / placeholder `?1`** — không nối chuỗi SQL.
