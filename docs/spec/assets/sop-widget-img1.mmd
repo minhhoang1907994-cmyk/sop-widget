@@ -1,0 +1,23 @@
+flowchart TD
+  classDef actor fill:#E6F1FB,stroke:#185FA5,color:#0C447C
+  classDef internal fill:#EAF3DE,stroke:#3B6D11,color:#27500A
+  classDef external fill:#FAECE7,stroke:#993C1D,color:#712B13
+  classDef error fill:#FCEBEB,stroke:#A32D2D,color:#791F1F
+
+  OP([Operator]):::actor --> OPEN[Open app]:::internal
+  OPEN --> PICK[Pick procedure]:::internal
+  PICK --> START[start_run: status running]:::internal
+  START --> SHOW[Show current step]:::internal
+  SHOW --> NEEDEV{requires_evidence?}
+  NEEDEV -- Yes --> CAP[capture_evidence:<br/>save PNG + SHA-256]:::internal
+  CAP --> CONFIRM[confirm_step]:::internal
+  NEEDEV -- No --> CONFIRM
+  CONFIRM --> HASEV{evidence present?}
+  HASEV -- No --> REJECT[Reject: show notice]:::error
+  REJECT --> SHOW
+  HASEV -- Yes --> WRITE[Write confirmed_at + notes]:::internal
+  WRITE --> LAST{last step?}
+  LAST -- No --> SHOW
+  LAST -- Yes --> DONE[set_run_status: completed]:::internal
+  DONE --> EXPORT[export_report:<br/>embed images as base64]:::internal
+  EXPORT --> LEADER([Leader reads HTML]):::external
