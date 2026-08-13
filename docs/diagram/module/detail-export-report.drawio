@@ -1,0 +1,51 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="sop-widget-export-report" name="Export HTML report">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="user" value="Operator" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="140" height="560" as="geometry" />
+        </mxCell>
+        <mxCell id="ui" value="React UI&#10;Done view or History view" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="240" y="40" width="180" height="560" as="geometry" />
+        </mxCell>
+        <mxCell id="apits" value="api.ts&#10;invoke wrapper" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="480" y="40" width="140" height="560" as="geometry" />
+        </mxCell>
+        <mxCell id="cmd" value="export_report&#10;src-tauri/src/lib.rs" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="680" y="40" width="180" height="560" as="geometry" />
+        </mxCell>
+        <mxCell id="db" value="SQLite&#10;sop-widget.db" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="920" y="40" width="160" height="560" as="geometry" />
+        </mxCell>
+        <mxCell id="fs" value="Filesystem&#10;%APPDATA%\NTA\SOP Widget\reports" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="40" width="240" height="560" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m1" value="Click Export report" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.11;entryX=0;entryY=0.11;" edge="1" source="user" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m2" value="api.exportReport(runId)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.18;entryX=0;entryY=0.18;" edge="1" source="ui" target="apits" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m3" value="invoke(&apos;export_report&apos;, { runId })" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.25;entryX=0;entryY=0.25;" edge="1" source="apits" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="m4" value="get_run reused: SELECT run WHERE id = ?1" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.32;entryX=0;entryY=0.32;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m5" value="SELECT procedure + steps ORDER BY order_index" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.39;entryX=0;entryY=0.39;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m6" value="SELECT step_executions WHERE run_id = ?1" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.46;entryX=0;entryY=0.46;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m7" value="RunDetails" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.54;entryX=1;entryY=0.54;" edge="1" source="db" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note_html" value="Build one table row per step, matching each step with its execution.&#10;Missing confirmation renders as a placeholder, not an empty cell.&#10;Every interpolated value goes through html() to escape and &quot; characters." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="640" y="360" width="420" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m8" value="create_dir_all(reports)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.68;entryX=0;entryY=0.68;" edge="1" source="cmd" target="fs" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m9" value="write report-{run_id}-{timestamp}.html" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.75;entryX=0;entryY=0.75;" edge="1" source="cmd" target="fs" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m10" value="absolute path" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.82;entryX=1;entryY=0.82;" edge="1" source="fs" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m11" value="path string, shown through setNotice" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.89;entryX=1;entryY=0.89;" edge="1" source="cmd" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note_link" value="The report stores the evidence file path as plain text,&#10;not an embedded image. Moving the evidence folder&#10;breaks the reference in already exported reports." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="630" width="380" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

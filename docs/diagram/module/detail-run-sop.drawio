@@ -1,0 +1,68 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="sop-widget-run" name="Run SOP with evidence">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="loopframe" value="loop [for each step of the procedure]" style="shape=umlFrame;whiteSpace=wrap;html=1;fillColor=none;dashed=1;strokeColor=#999999;width=250;height=30;align=left;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="20" y="490" width="1300" height="580" as="geometry" />
+        </mxCell>
+
+        <mxCell id="user" value="Operator" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="140" height="1160" as="geometry" />
+        </mxCell>
+        <mxCell id="ui" value="React UI&#10;App.tsx (Runner)" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="240" y="40" width="160" height="1160" as="geometry" />
+        </mxCell>
+        <mxCell id="apits" value="api.ts&#10;invoke wrapper" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="460" y="40" width="140" height="1160" as="geometry" />
+        </mxCell>
+        <mxCell id="cmd" value="Tauri command&#10;src-tauri/src/lib.rs" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="660" y="40" width="180" height="1160" as="geometry" />
+        </mxCell>
+        <mxCell id="db" value="SQLite&#10;sop-widget.db" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="900" y="40" width="140" height="1160" as="geometry" />
+        </mxCell>
+        <mxCell id="fs" value="Screen + Filesystem&#10;%APPDATA%\NTA\SOP Widget" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="40" width="220" height="1160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m1" value="Select a procedure" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.05;entryX=0;entryY=0.05;" edge="1" source="user" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m2" value="api.startRun(id)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.09;entryX=0;entryY=0.09;" edge="1" source="ui" target="apits" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m3" value="invoke(&apos;start_run&apos;, { procedureId })" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.12;entryX=0;entryY=0.12;" edge="1" source="apits" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m4" value="INSERT INTO runs (id = uuid v4, status = running, started_at)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.16;entryX=0;entryY=0.16;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m5" value="ok" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.19;entryX=1;entryY=0.19;" edge="1" source="db" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m6" value="Run" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.22;entryX=1;entryY=0.22;" edge="1" source="cmd" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="m7" value="api.getRun(run.id)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.26;entryX=0;entryY=0.26;" edge="1" source="ui" target="apits" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m8" value="invoke(&apos;get_run&apos;, { runId })" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.29;entryX=0;entryY=0.29;" edge="1" source="apits" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m9" value="SELECT run + procedure + steps + step_executions" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.33;entryX=0;entryY=0.33;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m10" value="RunDetails - render current step" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.36;entryX=1;entryY=0.36;" edge="1" source="cmd" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="m11" value="Click Capture evidence" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.41;entryX=0;entryY=0.41;" edge="1" source="user" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m12" value="api.captureEvidence(runId, stepId)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.45;entryX=0;entryY=0.45;" edge="1" source="ui" target="apits" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m13" value="invoke(&apos;capture_evidence&apos;)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.48;entryX=0;entryY=0.48;" edge="1" source="apits" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m14" value="Screen::all() first screen, capture and save PNG" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.52;entryX=0;entryY=0.52;" edge="1" source="cmd" target="fs" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m15" value="evidence\{run_id}\step-{step_id}-{timestamp}.png" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.55;entryX=1;entryY=0.55;" edge="1" source="fs" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m16" value="INSERT INTO step_executions ... ON CONFLICT(run_id, step_id) DO UPDATE evidence_path" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.59;entryX=0;entryY=0.59;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m17" value="path string - reload run details" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.62;entryX=1;entryY=0.62;" edge="1" source="cmd" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="m18" value="Click Confirm step (with optional notes)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.66;entryX=0;entryY=0.66;" edge="1" source="user" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m19" value="api.confirmStep(runId, stepId, notes)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.69;entryX=0;entryY=0.69;" edge="1" source="ui" target="apits" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m20" value="invoke(&apos;confirm_step&apos;)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.72;entryX=0;entryY=0.72;" edge="1" source="apits" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m21" value="SELECT requires_evidence / evidence_path" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.76;entryX=0;entryY=0.76;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m22" value="alt [requires_evidence AND evidence_path IS NULL] : Err - blocked, shown as UI notice" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;strokeColor=#b85450;fontColor=#b85450;exitX=0;exitY=0.79;entryX=1;entryY=0.79;" edge="1" source="cmd" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m23" value="else : INSERT ... DO UPDATE confirmed_at, notes" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.83;entryX=0;entryY=0.83;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="m24" value="[last step] api.setRunStatus(runId, &apos;completed&apos;)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.86;entryX=0;entryY=0.86;" edge="1" source="ui" target="apits" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m25" value="invoke(&apos;set_run_status&apos;) - status whitelist checked" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.90;entryX=0;entryY=0.90;" edge="1" source="apits" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m26" value="UPDATE runs SET status, completed_at" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.93;entryX=0;entryY=0.93;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note_db" value="Every command opens its own connection through db():&#10;PRAGMA foreign_keys, CREATE TABLE IF NOT EXISTS, seed on empty DB" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="1240" width="320" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

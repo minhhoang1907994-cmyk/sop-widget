@@ -1,0 +1,52 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="sop-widget-save-procedure" name="Create or edit procedure">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="user" value="Operator" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="140" height="640" as="geometry" />
+        </mxCell>
+        <mxCell id="ui" value="React UI&#10;App.tsx (Builder)" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="240" y="40" width="180" height="640" as="geometry" />
+        </mxCell>
+        <mxCell id="apits" value="api.ts&#10;invoke wrapper" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="480" y="40" width="140" height="640" as="geometry" />
+        </mxCell>
+        <mxCell id="cmd" value="save_procedure&#10;src-tauri/src/lib.rs" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="680" y="40" width="180" height="640" as="geometry" />
+        </mxCell>
+        <mxCell id="db" value="SQLite&#10;procedures + steps" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="920" y="40" width="160" height="640" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m1" value="Fill procedure form and steps" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.09;entryX=0;entryY=0.09;" edge="1" source="user" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m2" value="Click Save" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.16;entryX=0;entryY=0.16;" edge="1" source="user" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="note_fe" value="FE guard: name and every step title must be non-empty,&#10;otherwise setNotice and stop (App.tsx save())" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="180" y="160" width="300" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m3" value="api.saveProcedure(editor)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.25;entryX=0;entryY=0.25;" edge="1" source="ui" target="apits" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m4" value="invoke(&apos;save_procedure&apos;, { input })" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.31;entryX=0;entryY=0.31;" edge="1" source="apits" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m5" value="alt [name empty OR steps empty OR any step title empty] : Err, no transaction opened" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;strokeColor=#b85450;fontColor=#b85450;exitX=0;exitY=0.38;entryX=1;entryY=0.38;" edge="1" source="cmd" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="m6" value="else : BEGIN TRANSACTION" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.47;entryX=0;entryY=0.47;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m7" value="id present : UPDATE procedures SET name, description, category, updated_at&#10;id absent : INSERT INTO procedures, take last_insert_rowid()" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.53;entryX=0;entryY=0.53;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m8" value="DELETE FROM steps WHERE procedure_id = ?1" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.59;entryX=0;entryY=0.59;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m9" value="INSERT INTO steps, order_index reassigned from array position" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.66;entryX=0;entryY=0.66;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m10" value="COMMIT" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.72;entryX=0;entryY=0.72;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m11" value="SELECT procedure + steps ORDER BY order_index" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.78;entryX=0;entryY=0.78;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m12" value="Procedure" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.84;entryX=1;entryY=0.84;" edge="1" source="cmd" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m13" value="api.listProcedures() then back to Picker view" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.91;entryX=0;entryY=0.91;" edge="1" source="ui" target="apits" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note_steps" value="Steps are replaced, not diffed: every save deletes all rows of the procedure&#10;and re-inserts them with fresh ids.&#10;&#10;Known defect: step_executions.step_id references steps(id) with no ON DELETE rule&#10;and foreign keys are enforced, so the DELETE fails once the procedure has been run.&#10;Editing such a procedure returns FOREIGN KEY constraint failed instead of saving.&#10;Reproduced on the same schema and statement sequence." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="700" y="720" width="470" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="note_archive" value="Delete is a soft delete elsewhere: delete_procedure sets archived = 1&#10;and list_procedures filters WHERE archived = 0." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="180" y="720" width="440" height="50" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
