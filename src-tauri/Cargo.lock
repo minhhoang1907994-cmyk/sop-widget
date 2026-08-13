@@ -3334,11 +3334,13 @@ dependencies = [
 name = "sop-widget"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "rusqlite",
  "screenshots",
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "uuid",

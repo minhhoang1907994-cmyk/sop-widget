@@ -35,14 +35,16 @@ export type Execution = {
   notes?: string | null;
   evidence_path?: string | null;
   captured_at?: string | null;
+  evidence_hash?: string | null;
 };
 
 export type Run = {
   id: string;
   procedure_id: number;
-  status: 'running' | 'paused' | 'completed' | 'cancelled';
+  status: 'running' | 'completed' | 'cancelled';
   started_at: string;
   completed_at?: string | null;
+  operator_name?: string | null;
   procedure_name?: string;
   confirmed_count?: number;
   evidence_count?: number;

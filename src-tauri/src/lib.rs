@@ -1,7 +1,9 @@
+use base64::Engine as _;
 use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use sha2::{Digest, Sha256};
+use std::{fs, path::Path, path::PathBuf};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -13,9 +15,9 @@ struct StepInput { id: Option<i64>, title: String, description: String, command:
 #[derive(Debug, Deserialize)]
 struct ProcedureInput { id: Option<i64>, name: String, description: String, category: Option<String>, steps: Vec<StepInput> }
 #[derive(Debug, Serialize, Clone)]
-struct Run { id: String, procedure_id: i64, status: String, started_at: String, completed_at: Option<String>, procedure_name: Option<String>, confirmed_count: Option<i64>, evidence_count: Option<i64> }
+struct Run { id: String, procedure_id: i64, status: String, started_at: String, completed_at: Option<String>, operator_name: Option<String>, procedure_name: Option<String>, confirmed_count: Option<i64>, evidence_count: Option<i64> }
 #[derive(Debug, Serialize)]
-struct Execution { id: i64, run_id: String, step_id: i64, confirmed_at: Option<String>, notes: Option<String>, evidence_path: Option<String>, captured_at: Option<String> }
+struct Execution { id: i64, run_id: String, step_id: i64, confirmed_at: Option<String>, notes: Option<String>, evidence_path: Option<String>, captured_at: Option<String>, evidence_hash: Option<String> }
 #[derive(Debug, Serialize)]
 struct RunDetails { run: Run, procedure: Procedure, executions: Vec<Execution> }
 
@@ -30,13 +32,28 @@ fn db() -> Result<Connection, String> {
   conn.execute_batch("PRAGMA foreign_keys = ON;
     CREATE TABLE IF NOT EXISTS procedures (id INTEGER PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', category TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, archived INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS steps (id INTEGER PRIMARY KEY, procedure_id INTEGER NOT NULL REFERENCES procedures(id) ON DELETE CASCADE, order_index INTEGER NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', command TEXT, requires_evidence INTEGER NOT NULL DEFAULT 0, archived INTEGER NOT NULL DEFAULT 0);
-    CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, procedure_id INTEGER NOT NULL REFERENCES procedures(id), status TEXT NOT NULL, started_at TEXT NOT NULL, completed_at TEXT);
-    CREATE TABLE IF NOT EXISTS step_executions (id INTEGER PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(id), step_id INTEGER NOT NULL REFERENCES steps(id), confirmed_at TEXT, notes TEXT, evidence_path TEXT, captured_at TEXT, UNIQUE(run_id, step_id));
+    CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, procedure_id INTEGER NOT NULL REFERENCES procedures(id), status TEXT NOT NULL, started_at TEXT NOT NULL, completed_at TEXT, operator_name TEXT);
+    CREATE TABLE IF NOT EXISTS step_executions (id INTEGER PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(id), step_id INTEGER NOT NULL REFERENCES steps(id), confirmed_at TEXT, notes TEXT, evidence_path TEXT, captured_at TEXT, evidence_hash TEXT, UNIQUE(run_id, step_id));
   ").map_err(|e| e.to_string())?;
   let _ = conn.execute("ALTER TABLE procedures ADD COLUMN archived INTEGER NOT NULL DEFAULT 0", []);
   let _ = conn.execute("ALTER TABLE steps ADD COLUMN archived INTEGER NOT NULL DEFAULT 0", []);
+  let _ = conn.execute("ALTER TABLE runs ADD COLUMN operator_name TEXT", []);
+  let _ = conn.execute("ALTER TABLE step_executions ADD COLUMN evidence_hash TEXT", []);
+  // BR-12: paused là giá trị cũ, trùng ngữ nghĩa với cancelled. Chuẩn hóa một chiều,
+  // idempotent — sau lần đầu câu này khớp 0 row.
+  conn.execute("UPDATE runs SET status='cancelled' WHERE status='paused'", []).map_err(|e| e.to_string())?;
   seed(&conn)?;
   Ok(conn)
+}
+// BR-13: run đã kết thúc không nhận thêm xác nhận hay bằng chứng.
+fn run_status(conn: &Connection, run_id: &str) -> Result<String, String> {
+  conn.query_row("SELECT status FROM runs WHERE id=?1", [run_id], |r| r.get(0)).map_err(|e| e.to_string())
+}
+fn sha256_file(path: &Path) -> Result<String, String> {
+  let bytes = fs::read(path).map_err(|e| e.to_string())?;
+  let mut hasher = Sha256::new();
+  hasher.update(&bytes);
+  Ok(format!("{:x}", hasher.finalize()))
 }
 fn now() -> String { Utc::now().to_rfc3339() }
 fn seed(conn: &Connection) -> Result<(), String> {
@@ -109,24 +126,77 @@ fn save_procedure(input: ProcedureInput) -> Result<Procedure, String> {
 #[tauri::command]
 fn delete_procedure(id: i64) -> Result<(), String> { let conn=db()?; conn.execute("UPDATE procedures SET archived=1,updated_at=?1 WHERE id=?2",params![now(),id]).map_err(|e|e.to_string())?; Ok(()) }
 #[tauri::command]
-fn start_run(procedure_id: i64) -> Result<Run, String> { let conn=db()?; let _=procedure(&conn,procedure_id)?; let run=Run { id:Uuid::new_v4().to_string(), procedure_id, status:"running".into(), started_at:now(), completed_at:None, procedure_name:None, confirmed_count:None, evidence_count:None }; conn.execute("INSERT INTO runs(id,procedure_id,status,started_at) VALUES(?1,?2,?3,?4)",params![run.id,run.procedure_id,run.status,run.started_at]).map_err(|e|e.to_string())?; Ok(run) }
+fn start_run(procedure_id: i64, operator_name: String) -> Result<Run, String> { let conn=db()?; let _=procedure(&conn,procedure_id)?; let operator=Some(operator_name.trim().to_string()).filter(|s|!s.is_empty()); let run=Run { id:Uuid::new_v4().to_string(), procedure_id, status:"running".into(), started_at:now(), completed_at:None, operator_name:operator, procedure_name:None, confirmed_count:None, evidence_count:None }; conn.execute("INSERT INTO runs(id,procedure_id,status,started_at,operator_name) VALUES(?1,?2,?3,?4,?5)",params![run.id,run.procedure_id,run.status,run.started_at,run.operator_name]).map_err(|e|e.to_string())?; Ok(run) }
 #[tauri::command]
-fn get_run(run_id: String) -> Result<RunDetails, String> { let conn=db()?; let run=conn.query_row("SELECT id,procedure_id,status,started_at,completed_at FROM runs WHERE id=?1",[&run_id],|r|Ok(Run{id:r.get(0)?,procedure_id:r.get(1)?,status:r.get(2)?,started_at:r.get(3)?,completed_at:r.get(4)?,procedure_name:None,confirmed_count:None,evidence_count:None})).map_err(|e|e.to_string())?; let finished=run.status=="completed"||run.status=="cancelled"; let procedure=procedure_scoped(&conn,run.procedure_id,Some(run_id.as_str()),finished)?; let executions=conn.prepare("SELECT id,run_id,step_id,confirmed_at,notes,evidence_path,captured_at FROM step_executions WHERE run_id=?1").map_err(|e|e.to_string())?.query_map([&run_id],|r|Ok(Execution{id:r.get(0)?,run_id:r.get(1)?,step_id:r.get(2)?,confirmed_at:r.get(3)?,notes:r.get(4)?,evidence_path:r.get(5)?,captured_at:r.get(6)?})).map_err(|e|e.to_string())?.collect::<Result<Vec<_>,_>>().map_err(|e|e.to_string())?; Ok(RunDetails {run,procedure,executions}) }
+fn get_run(run_id: String) -> Result<RunDetails, String> { let conn=db()?; let run=conn.query_row("SELECT id,procedure_id,status,started_at,completed_at,operator_name FROM runs WHERE id=?1",[&run_id],|r|Ok(Run{id:r.get(0)?,procedure_id:r.get(1)?,status:r.get(2)?,started_at:r.get(3)?,completed_at:r.get(4)?,operator_name:r.get(5)?,procedure_name:None,confirmed_count:None,evidence_count:None})).map_err(|e|e.to_string())?; let finished=run.status=="completed"||run.status=="cancelled"; let procedure=procedure_scoped(&conn,run.procedure_id,Some(run_id.as_str()),finished)?; let executions=conn.prepare("SELECT id,run_id,step_id,confirmed_at,notes,evidence_path,captured_at,evidence_hash FROM step_executions WHERE run_id=?1").map_err(|e|e.to_string())?.query_map([&run_id],|r|Ok(Execution{id:r.get(0)?,run_id:r.get(1)?,step_id:r.get(2)?,confirmed_at:r.get(3)?,notes:r.get(4)?,evidence_path:r.get(5)?,captured_at:r.get(6)?,evidence_hash:r.get(7)?})).map_err(|e|e.to_string())?.collect::<Result<Vec<_>,_>>().map_err(|e|e.to_string())?; Ok(RunDetails {run,procedure,executions}) }
 #[tauri::command]
-fn confirm_step(run_id: String, step_id: i64, notes: String) -> Result<(), String> { let conn=db()?; let requires:bool=conn.query_row("SELECT requires_evidence FROM steps WHERE id=?1",[step_id],|r|r.get(0)).map_err(|e|e.to_string())?; let evidence:Option<String>=conn.query_row("SELECT evidence_path FROM step_executions WHERE run_id=?1 AND step_id=?2",params![run_id,step_id],|r|r.get(0)).optional().map_err(|e|e.to_string())?.flatten(); if requires && evidence.is_none() { return Err("Bước này yêu cầu ảnh bằng chứng trước khi xác nhận.".into()); } conn.execute("INSERT INTO step_executions(run_id,step_id,confirmed_at,notes) VALUES(?1,?2,?3,?4) ON CONFLICT(run_id,step_id) DO UPDATE SET confirmed_at=excluded.confirmed_at,notes=excluded.notes",params![run_id,step_id,now(),notes]).map_err(|e|e.to_string())?; Ok(()) }
+fn confirm_step(run_id: String, step_id: i64, notes: String) -> Result<(), String> { let conn=db()?; if run_status(&conn,&run_id)?!="running" { return Err("Lần chạy này đã kết thúc, không thể xác nhận thêm bước.".into()); } let requires:bool=conn.query_row("SELECT requires_evidence FROM steps WHERE id=?1",[step_id],|r|r.get(0)).map_err(|e|e.to_string())?; let evidence:Option<String>=conn.query_row("SELECT evidence_path FROM step_executions WHERE run_id=?1 AND step_id=?2",params![run_id,step_id],|r|r.get(0)).optional().map_err(|e|e.to_string())?.flatten(); if requires && evidence.is_none() { return Err("Bước này yêu cầu ảnh bằng chứng trước khi xác nhận.".into()); } conn.execute("INSERT INTO step_executions(run_id,step_id,confirmed_at,notes) VALUES(?1,?2,?3,?4) ON CONFLICT(run_id,step_id) DO UPDATE SET confirmed_at=excluded.confirmed_at,notes=excluded.notes",params![run_id,step_id,now(),notes]).map_err(|e|e.to_string())?; Ok(()) }
 #[tauri::command]
-fn set_run_status(run_id: String, status: String) -> Result<(), String> { if !["running","paused","completed","cancelled"].contains(&status.as_str()) {return Err("Trạng thái không hợp lệ.".into())} let conn=db()?; let completed=if status=="completed" {Some(now())} else {None}; conn.execute("UPDATE runs SET status=?1,completed_at=?2 WHERE id=?3",params![status,completed,run_id]).map_err(|e|e.to_string())?; Ok(()) }
+fn set_run_status(run_id: String, status: String) -> Result<(), String> { if !["running","completed","cancelled"].contains(&status.as_str()) {return Err("Trạng thái không hợp lệ.".into())} let conn=db()?; let completed=if status=="completed" {Some(now())} else {None}; conn.execute("UPDATE runs SET status=?1,completed_at=?2 WHERE id=?3",params![status,completed,run_id]).map_err(|e|e.to_string())?; Ok(()) }
 #[tauri::command]
-fn capture_evidence(run_id: String, step_id: i64) -> Result<String, String> { let evidence_dir=app_dir()?.join("evidence").join(&run_id); fs::create_dir_all(&evidence_dir).map_err(|e|e.to_string())?; let screen=screenshots::Screen::all().map_err(|e|format!("Không thể truy cập màn hình: {e}"))?.into_iter().next().ok_or("Không tìm thấy màn hình để chụp.")?; let image=screen.capture().map_err(|e|format!("Chụp màn hình thất bại: {e}"))?; let path=evidence_dir.join(format!("step-{step_id}-{}.png",Utc::now().format("%Y%m%d-%H%M%S"))); image.save(&path).map_err(|e|e.to_string())?; let path_string=path.to_string_lossy().to_string(); let conn=db()?; conn.execute("INSERT INTO step_executions(run_id,step_id,evidence_path,captured_at) VALUES(?1,?2,?3,?4) ON CONFLICT(run_id,step_id) DO UPDATE SET evidence_path=excluded.evidence_path,captured_at=excluded.captured_at",params![run_id,step_id,path_string,now()]).map_err(|e|e.to_string())?; Ok(path_string) }
+fn capture_evidence(run_id: String, step_id: i64) -> Result<String, String> {
+  let conn = db()?;
+  // Kiểm tra trạng thái TRƯỚC khi chụp để không sinh file PNG rác cho run đã đóng.
+  if run_status(&conn,&run_id)?!="running" { return Err("Lần chạy này đã kết thúc, không thể chụp thêm bằng chứng.".into()); }
+  let evidence_dir=app_dir()?.join("evidence").join(&run_id);
+  fs::create_dir_all(&evidence_dir).map_err(|e|e.to_string())?;
+  let screen=screenshots::Screen::all().map_err(|e|format!("Không thể truy cập màn hình: {e}"))?.into_iter().next().ok_or("Không tìm thấy màn hình để chụp.")?;
+  let image=screen.capture().map_err(|e|format!("Chụp màn hình thất bại: {e}"))?;
+  let path=evidence_dir.join(format!("step-{step_id}-{}.png",Utc::now().format("%Y%m%d-%H%M%S")));
+  image.save(&path).map_err(|e|e.to_string())?;
+  let hash=sha256_file(&path)?;
+  let path_string=path.to_string_lossy().to_string();
+  conn.execute("INSERT INTO step_executions(run_id,step_id,evidence_path,captured_at,evidence_hash) VALUES(?1,?2,?3,?4,?5) ON CONFLICT(run_id,step_id) DO UPDATE SET evidence_path=excluded.evidence_path,captured_at=excluded.captured_at,evidence_hash=excluded.evidence_hash",params![run_id,step_id,path_string,now(),hash]).map_err(|e|e.to_string())?;
+  Ok(path_string)
+}
 #[tauri::command]
 fn list_runs() -> Result<Vec<Run>, String> {
   let conn = db()?;
-  let mut statement = conn.prepare("SELECT r.id,r.procedure_id,r.status,r.started_at,r.completed_at,p.name,(SELECT COUNT(*) FROM step_executions e WHERE e.run_id=r.id AND e.confirmed_at IS NOT NULL),(SELECT COUNT(*) FROM step_executions e WHERE e.run_id=r.id AND e.evidence_path IS NOT NULL) FROM runs r JOIN procedures p ON p.id=r.procedure_id ORDER BY r.started_at DESC").map_err(|e| e.to_string())?;
-  let runs = statement.query_map([], |r| Ok(Run { id:r.get(0)?, procedure_id:r.get(1)?, status:r.get(2)?, started_at:r.get(3)?, completed_at:r.get(4)?, procedure_name:r.get(5)?, confirmed_count:r.get(6)?, evidence_count:r.get(7)? })).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+  // BR-14: cố ý KHÔNG lọc p.archived — archive quy trình không được giấu lần chạy cũ.
+  let mut statement = conn.prepare("SELECT r.id,r.procedure_id,r.status,r.started_at,r.completed_at,r.operator_name,p.name,(SELECT COUNT(*) FROM step_executions e WHERE e.run_id=r.id AND e.confirmed_at IS NOT NULL),(SELECT COUNT(*) FROM step_executions e WHERE e.run_id=r.id AND e.evidence_path IS NOT NULL) FROM runs r JOIN procedures p ON p.id=r.procedure_id ORDER BY r.started_at DESC").map_err(|e| e.to_string())?;
+  let runs = statement.query_map([], |r| Ok(Run { id:r.get(0)?, procedure_id:r.get(1)?, status:r.get(2)?, started_at:r.get(3)?, completed_at:r.get(4)?, operator_name:r.get(5)?, procedure_name:r.get(6)?, confirmed_count:r.get(7)?, evidence_count:r.get(8)? })).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
   Ok(runs)
 }
 #[tauri::command]
-fn export_report(run_id: String) -> Result<String, String> { let details=get_run(run_id)?; let mut rows=String::new(); for step in &details.procedure.steps { let execution=details.executions.iter().find(|e|e.step_id==step.id); rows.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",step.order_index+1,html(&step.title),execution.and_then(|e|e.confirmed_at.as_ref()).map(|s|html(s)).unwrap_or_else(||"Chưa xác nhận".into()),execution.and_then(|e|e.notes.as_ref()).map(|s|html(s)).unwrap_or_else(||"—".into()),execution.and_then(|e|e.evidence_path.as_ref()).map(|s|html(s)).unwrap_or_else(||"—".into()))); } let report=format!("<!doctype html><html lang='vi'><meta charset='utf-8'><title>Báo cáo SOP</title><style>body{{font:14px Segoe UI,Arial;margin:40px;color:#172b4d}}table{{width:100%;border-collapse:collapse}}th,td{{border:1px solid #d0d5dd;padding:9px;text-align:left;vertical-align:top}}th{{background:#e8f1fb}}h1{{color:#0f6cbd}}</style><h1>Báo cáo thực hiện SOP</h1><p><b>Quy trình:</b> {}<br><b>Lần chạy:</b> {}<br><b>Trạng thái:</b> {}<br><b>Bắt đầu:</b> {}<br><b>Hoàn tất:</b> {}</p><table><thead><tr><th>#</th><th>Bước</th><th>Xác nhận</th><th>Ghi chú</th><th>Ảnh bằng chứng</th></tr></thead><tbody>{}</tbody></table></html>",html(&details.procedure.name),html(&details.run.id),html(&details.run.status),html(&details.run.started_at),details.run.completed_at.as_ref().map(|s|html(s)).unwrap_or_else(||"—".into()),rows); let dir=app_dir()?.join("reports"); fs::create_dir_all(&dir).map_err(|e|e.to_string())?; let path=dir.join(format!("report-{}-{}.html",details.run.id,Utc::now().format("%Y%m%d-%H%M%S"))); fs::write(&path,report).map_err(|e|e.to_string())?; Ok(path.to_string_lossy().to_string()) }
+fn export_report(run_id: String) -> Result<String, String> {
+  // Cố ý cho phép xuất ở mọi trạng thái run, kể cả đang chạy — lấy báo cáo giữa chừng.
+  let details = get_run(run_id)?;
+  let mut rows = String::new();
+  for step in &details.procedure.steps {
+    let execution = details.executions.iter().find(|e|e.step_id==step.id);
+    rows.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+      step.order_index+1,
+      html(&step.title),
+      execution.and_then(|e|e.confirmed_at.as_ref()).map(|s|html(s)).unwrap_or_else(||"Chưa xác nhận".into()),
+      execution.and_then(|e|e.notes.as_ref()).map(|s|html(s)).unwrap_or_else(||"—".into()),
+      evidence_cell(execution)));
+  }
+  let report = format!("<!doctype html><html lang='vi'><meta charset='utf-8'><title>Báo cáo SOP</title><style>body{{font:14px Segoe UI,Arial;margin:40px;color:#172b4d}}table{{width:100%;border-collapse:collapse}}th,td{{border:1px solid #d0d5dd;padding:9px;text-align:left;vertical-align:top}}th{{background:#e8f1fb}}h1{{color:#0f6cbd}}img.evidence{{max-width:520px;height:auto;display:block;border:1px solid #d0d5dd}}.hash{{font:11px Consolas,monospace;color:#5e6c84;word-break:break-all;margin-top:4px}}.missing{{color:#a32d2d}}</style><h1>Báo cáo thực hiện SOP</h1><p><b>Quy trình:</b> {}<br><b>Người thực hiện:</b> {}<br><b>Lần chạy:</b> {}<br><b>Trạng thái:</b> {}<br><b>Bắt đầu:</b> {}<br><b>Hoàn tất:</b> {}</p><table><thead><tr><th>#</th><th>Bước</th><th>Xác nhận</th><th>Ghi chú</th><th>Ảnh bằng chứng</th></tr></thead><tbody>{}</tbody></table></html>",
+    html(&details.procedure.name),
+    details.run.operator_name.as_ref().filter(|s|!s.trim().is_empty()).map(|s|html(s)).unwrap_or_else(||"(chưa đặt tên)".into()),
+    html(&details.run.id),
+    html(status_label(&details.run.status)),
+    html(&details.run.started_at),
+    details.run.completed_at.as_ref().map(|s|html(s)).unwrap_or_else(||"—".into()),
+    rows);
+  let dir = app_dir()?.join("reports");
+  fs::create_dir_all(&dir).map_err(|e|e.to_string())?;
+  let path = dir.join(format!("report-{}-{}.html",details.run.id,Utc::now().format("%Y%m%d-%H%M%S")));
+  fs::write(&path,report).map_err(|e|e.to_string())?;
+  Ok(path.to_string_lossy().to_string())
+}
+// BR-10: nhúng ảnh base64 để file HTML gửi đi xem được trên máy không có file gốc.
+// Ảnh mất không làm fail cả báo cáo — chỉ in dòng cảnh báo tại đúng ô đó.
+fn evidence_cell(execution: Option<&Execution>) -> String {
+  let Some(execution) = execution else { return "—".into() };
+  let Some(path) = execution.evidence_path.as_ref() else { return "—".into() };
+  let hash = execution.evidence_hash.as_ref().map(|h|html(h)).unwrap_or_else(||"(chưa có hash)".into());
+  match fs::read(path) {
+    Ok(bytes) => format!("<img class='evidence' src='data:image/png;base64,{}' alt='Ảnh bằng chứng'><div class='hash'>SHA-256: {}</div>",base64::engine::general_purpose::STANDARD.encode(&bytes),hash),
+    Err(_) => format!("<div class='missing'>Ảnh bằng chứng không tìm thấy tại: {}</div><div class='hash'>SHA-256: {}</div>",html(path),hash)
+  }
+}
+fn status_label(status: &str) -> &'static str { match status { "completed"=>"Hoàn thành", "cancelled"=>"Đã hủy", _=>"Đang chạy" } }
 fn html(value: &str) -> String { value.replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;").replace('"',"&quot;") }
 
 pub fn run() { tauri::Builder::default().invoke_handler(tauri::generate_handler![list_procedures,save_procedure,delete_procedure,start_run,get_run,confirm_step,set_run_status,capture_evidence,list_runs,export_report]).run(tauri::generate_context!()).expect("error while running SOP Widget"); }

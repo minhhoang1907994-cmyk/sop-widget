@@ -95,7 +95,7 @@
         <mxCell id="e_export" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="done" target="export" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="e_end" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="export" target="end" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <mxCell id="e_pause" value="Pause&#10;set_run_status(paused)" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" edge="1" source="runner" target="picker" parent="1">
+        <mxCell id="e_pause" value="Cancel run&#10;set_run_status(cancelled)&#10;confirmed steps are kept" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" edge="1" source="runner" target="picker" parent="1">
           <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="580" y="670" /><mxPoint x="580" y="290" /></Array></mxGeometry>
         </mxCell>
       </root>
