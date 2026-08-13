@@ -1,3 +1,20 @@
 # Rust / Tauri build output
 /src-tauri/target/
 target/
+/src-tauri/gen/
+
+# Node
+node_modules/
+
+# Frontend build output
+dist/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
+# Local session notes
+.memory/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
