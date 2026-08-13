@@ -13,16 +13,21 @@
     "windows": [{
       "label": "main",
       "title": "SOP Widget",
-      "width": 360,
-      "height": 560,
-      "minWidth": 340,
-      "minHeight": 460,
+      "width": 344,
+      "height": 372,
+      "minWidth": 320,
+      "minHeight": 280,
       "resizable": true,
       "alwaysOnTop": true,
       "decorations": false,
-      "transparent": false
+      "transparent": true
     }],
     "security": { "csp": null }
   },
-  "bundle": { "active": true, "targets": "all", "windows": { "nsis": { "displayLanguageSelector": false } } }
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": ["icons/icon.ico"],
+    "windows": { "nsis": { "displayLanguageSelector": false } }
+  }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { api } from './api';
 import type { Procedure, ProcedureInput, Run, RunDetails, StepInput } from './types';
@@ -22,8 +22,15 @@ export default function App() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [transparency, setTransparency] = useState(() => Number(localStorage.getItem('sop-widget-transparency') ?? 20));
+  const [backgroundColor, setBackgroundColor] = useState(() => localStorage.getItem('sop-widget-background-color') ?? '#abf1f2');
   const loadProcedures = async () => setProcedures(await api.listProcedures());
   useEffect(() => { void loadProcedures(); }, []);
+  useEffect(() => {
+    localStorage.setItem('sop-widget-transparency', String(transparency));
+    localStorage.setItem('sop-widget-background-color', backgroundColor);
+  }, [transparency, backgroundColor]);
   const goPicker = () => { setView('picker'); setDetails(null); setFinished(null); };
   const isTauriWindow = () => typeof window !== 'undefined' && !!(window as typeof window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
   const minimizeWindow = async () => {
@@ -55,16 +62,24 @@ export default function App() {
   const openHistory = async () => { try { setRuns(await api.listRuns()); setView('history'); } catch (e) { setNotice(String(e)); } };
   const currentTitle = view === 'runner' ? details?.procedure.name : view === 'done' ? finished?.procedure.name : view === 'builder' ? 'Quản lý quy trình' : view === 'history' ? 'Lịch sử SOP' : 'SOP Widget';
 
-  return <main className="widget-app">
+  const widgetStyle = { '--glass-transparency': `${transparency}%`, '--panel-color': backgroundColor } as CSSProperties;
+
+  return <main className="widget-app" style={widgetStyle}>
     <header className="titlebar">
       <div className="drag-region" data-tauri-drag-region="true">
-        <div className="app-icon">✓</div><span className="app-name">{currentTitle}</span><span className="pin-badge">📌 Luôn nổi</span>
+        <div className="app-icon">✓</div><span className="app-name">{currentTitle}</span>
       </div>
       <div className="win-btns">
+        <button type="button" className="win-btn settings-btn" title="Cài đặt giao diện" aria-label="Cài đặt giao diện" onClick={e => { e.stopPropagation(); setSettingsOpen(open => !open); }}>⚙</button>
         <button type="button" className="win-btn" title="Thu gọn" aria-label="Thu gọn" onClick={e => { e.stopPropagation(); void minimizeWindow(); }}>–</button>
         <button type="button" className="win-btn close" title="Đóng" aria-label="Đóng" onClick={e => { e.stopPropagation(); void closeWindow(); }}>✕</button>
       </div>
     </header>
+    {settingsOpen && <aside className="settings-panel" aria-label="Cài đặt giao diện">
+      <div className="settings-heading"><b>Giao diện</b><button type="button" aria-label="Đóng cài đặt" onClick={() => setSettingsOpen(false)}>×</button></div>
+      <label className="range-setting"><span>Độ trong suốt <b>{transparency}%</b></span><input type="range" min="15" max="85" value={transparency} onChange={e => setTransparency(Number(e.target.value))} /></label>
+      <label className="color-setting"><span>Màu nền</span><input type="color" value={backgroundColor} onChange={e => setBackgroundColor(e.target.value)} /></label>
+    </aside>}
     <div className="widget-body">
       {notice && <button className="notice" onClick={() => setNotice('')}>{notice} <b>×</b></button>}
       {view === 'picker' && <Picker procedures={procedures} busy={busy} onStart={start} onCreate={() => openEditor()} onHistory={openHistory} />}
@@ -77,7 +92,11 @@ export default function App() {
 }
 
 function Picker({ procedures, busy, onStart, onCreate, onHistory }: { procedures: Procedure[]; busy: boolean; onStart: (id: number) => void; onCreate: () => void; onHistory: () => void }) {
-  return <><p className="picker-label">Chọn quy trình để bắt đầu</p><div>{procedures.map(p => { const look = appearance(p.category); return <button className="proc-item" key={p.id} disabled={busy} onClick={() => onStart(p.id)}><span className={`proc-icon ${look.color}`}>{look.icon}</span><span className="proc-info"><b className="proc-name">{p.name}</b><span className="proc-meta">{p.steps.length} bước</span></span><span className="proc-chevron">›</span></button>; })}</div>{!procedures.length && <p className="empty-state">Chưa có quy trình nào.</p>}<button className="add-proc-btn" onClick={onCreate}>＋ Tạo quy trình mới</button><button className="history-link" onClick={onHistory}>◷ Xem lịch sử thực hiện</button></>;
+  const [search, setSearch] = useState('');
+  const normalizedSearch = search.trim().toLocaleLowerCase('vi');
+  const filteredProcedures = procedures.filter(procedure => procedure.name.toLocaleLowerCase('vi').includes(normalizedSearch));
+
+  return <div className="picker-view"><p className="picker-label">Chọn quy trình để bắt đầu</p><input className="procedure-search" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm tên quy trình..." aria-label="Tìm tên quy trình" /><div className="procedure-list">{filteredProcedures.map(p => { const look = appearance(p.category); return <button className="proc-item" key={p.id} disabled={busy} onClick={() => onStart(p.id)}><span className={`proc-icon ${look.color}`}>{look.icon}</span><span className="proc-info"><b className="proc-name">{p.name}</b><span className="proc-meta">{p.steps.length} bước</span></span><span className="proc-chevron">›</span></button>; })}{!procedures.length && <p className="empty-state">Chưa có quy trình nào.</p>}{procedures.length > 0 && !filteredProcedures.length && <p className="empty-state">Không tìm thấy quy trình phù hợp.</p>}</div><button className="add-proc-btn" onClick={onCreate}>＋ Tạo quy trình mới</button><button className="history-link" onClick={onHistory}>◷ Xem lịch sử thực hiện</button></div>;
 }
 
 function Runner({ details, busy, setBusy, onReload, onPause, onFinished, onError }: { details: RunDetails; busy: boolean; setBusy: (busy: boolean) => void; onReload: () => Promise<void>; onPause: () => Promise<void>; onFinished: (details: RunDetails) => void; onError: (message: string) => void }) {
@@ -106,4 +125,4 @@ function Builder({ value, onChange, onSave, onCancel, busy }: { value: Procedure
   return <div className="builder-view"><p className="picker-label">Tạo hoặc chỉnh sửa quy trình</p><label>Tên quy trình<input value={value.name} onChange={e => patch({ name: e.target.value })} /></label><label>Danh mục<input value={value.category ?? ''} onChange={e => patch({ category: e.target.value })} placeholder="Deploy, Backup…" /></label><label>Mô tả<textarea value={value.description} onChange={e => patch({ description: e.target.value })} /></label><div className="builder-steps">{value.steps.map((step, i) => <div className="mini-step" key={i}><b>Bước {i + 1}</b><input value={step.title} onChange={e => patchStep(i, { title: e.target.value })} placeholder="Tiêu đề" /><textarea value={step.description} onChange={e => patchStep(i, { description: e.target.value })} placeholder="Mô tả" /><input value={step.command ?? ''} onChange={e => patchStep(i, { command: e.target.value })} placeholder="Lệnh (tùy chọn)" /><label className="check"><input type="checkbox" checked={step.requires_evidence} onChange={e => patchStep(i, { requires_evidence: e.target.checked })} /> Yêu cầu bằng chứng</label>{value.steps.length > 1 && <button className="remove-step" onClick={() => patch({ steps: value.steps.filter((_, index) => index !== i) })}>Xóa bước</button>}</div>)}</div><button className="add-proc-btn" onClick={() => patch({ steps: [...value.steps, newStep()] })}>＋ Thêm bước</button><div className="builder-actions"><button className="btn" onClick={onCancel}>Hủy</button><button className="btn btn-primary" disabled={busy} onClick={onSave}>Lưu quy trình</button></div></div>;
 }
 
-function History({ runs, onBack, onExport }: { runs: Run[]; onBack: () => void; onExport: (id: string) => void }) { return <div className="history-view"><p className="picker-label">Lịch sử thực hiện</p>{runs.map(run => <div className="history-item" key={run.id}><b>{run.procedure_name}</b><span>{run.status === 'completed' ? '✓ Hoàn thành' : '⏸ Tạm dừng'} · {run.confirmed_count ?? 0} bước</span><button className="btn btn-small" onClick={() => onExport(run.id)}>Xuất HTML</button></div>)}{!runs.length && <p className="empty-state">Chưa có lần chạy nào.</p>}<button className="btn" onClick={onBack}>‹ Về danh sách</button></div>; }
+function History({ runs, onBack, onExport }: { runs: Run[]; onBack: () => void; onExport: (id: string) => void }) { return <div className="history-view"><p className="picker-label">Lịch sử thực hiện</p><div className="history-list">{runs.map(run => <div className="history-item" key={run.id}><b>{run.procedure_name}</b><span>{run.status === 'completed' ? '✓ Hoàn thành' : '⏸ Tạm dừng'} · {run.confirmed_count ?? 0} bước</span><button className="btn btn-small" onClick={() => onExport(run.id)}>Xuất HTML</button></div>)}{!runs.length && <p className="empty-state">Chưa có lần chạy nào.</p>}</div><button className="btn" onClick={onBack}>‹ Về danh sách</button></div>; }
