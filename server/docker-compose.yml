@@ -1,0 +1,56 @@
+services:
+  db:
+    image: mysql:8.0
+    command: --default-time-zone=+00:00
+    environment:
+      TZ: UTC
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root-change-me}
+      MYSQL_DATABASE: ${DB_NAME:-sop_widget}
+      MYSQL_USER: ${DB_USER:-sop}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-change-me}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+      # Tạo database riêng cho test khi container được khởi tạo lần đầu.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_PWD:-change-me}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      TZ: UTC
+      PORT: 8080
+      HOST: 0.0.0.0
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-sop}
+      DB_PASSWORD: ${DB_PASSWORD:-change-me}
+      DB_NAME: ${DB_NAME:-sop_widget}
+      STORAGE_DIR: /data/reports
+      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-30}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+      LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-10}
+      LOGIN_RATE_WINDOW_MINUTES: ${LOGIN_RATE_WINDOW_MINUTES:-15}
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-admin}
+      SEED_ADMIN_DISPLAY_NAME: ${SEED_ADMIN_DISPLAY_NAME:-Quản trị viên}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-change-me-now}
+    ports:
+      - "8080:8080"
+    volumes:
+      - report-data:/data/reports
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  report-data:

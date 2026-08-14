@@ -21,6 +21,23 @@ struct Execution { id: i64, run_id: String, step_id: i64, confirmed_at: Option<S
 #[derive(Debug, Serialize)]
 struct RunDetails { run: Run, procedure: Procedure, executions: Vec<Execution> }
 
+// Phiên đăng nhập trả cho frontend. Cố ý KHÔNG có `token`: chỉ phía Rust giữ token thô và
+// tự gắn header, đúng §13 của docs/spec/login-report-sharing.md.
+#[derive(Debug, Serialize, Clone)]
+struct AuthSession { user_id: i64, username: String, display_name: String, role: String, expires_at: String, server_url: String, must_change_password: bool }
+// Phiên đầy đủ dùng nội bộ, có token để gọi API.
+struct StoredSession { session: AuthSession, token: String }
+#[derive(Debug, Serialize, Clone)]
+struct Member { id: i64, username: String, display_name: String, role: String, is_active: bool, must_change_password: bool }
+// Người nhận trong bộ chọn. Server trả cho member đúng hai field này, cho admin trả nhiều hơn —
+// ở đây chỉ lấy phần dùng chung để một kiểu chạy được cho cả hai vai.
+#[derive(Debug, Serialize, Clone)]
+struct Recipient { id: i64, display_name: String }
+#[derive(Debug, Serialize, Clone)]
+struct SharedReport { report_id: String, share_url: String, local_path: String, size_bytes: u64, recipients: Vec<Recipient> }
+#[derive(Debug, Serialize, Clone)]
+struct InboxItem { report_id: String, run_id: String, procedure_name: String, operator_display_name: String, sender_display_name: String, run_status: String, created_at: String, size_bytes: u64, first_viewed_at: Option<String>, share_url: String }
+
 fn app_dir() -> Result<PathBuf, String> {
   let base = std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or(std::env::current_dir().map_err(|e| e.to_string())?);
   let dir = base.join("NTA").join("SOP Widget");
@@ -34,11 +51,15 @@ fn db() -> Result<Connection, String> {
     CREATE TABLE IF NOT EXISTS steps (id INTEGER PRIMARY KEY, procedure_id INTEGER NOT NULL REFERENCES procedures(id) ON DELETE CASCADE, order_index INTEGER NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', command TEXT, requires_evidence INTEGER NOT NULL DEFAULT 0, archived INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, procedure_id INTEGER NOT NULL REFERENCES procedures(id), status TEXT NOT NULL, started_at TEXT NOT NULL, completed_at TEXT, operator_name TEXT);
     CREATE TABLE IF NOT EXISTS step_executions (id INTEGER PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(id), step_id INTEGER NOT NULL REFERENCES steps(id), confirmed_at TEXT, notes TEXT, evidence_path TEXT, captured_at TEXT, evidence_hash TEXT, UNIQUE(run_id, step_id));
+    CREATE TABLE IF NOT EXISTS auth_session (id INTEGER PRIMARY KEY CHECK (id = 1), user_id INTEGER NOT NULL, username TEXT NOT NULL, display_name TEXT NOT NULL, role TEXT NOT NULL, token TEXT NOT NULL, expires_at TEXT NOT NULL, server_url TEXT NOT NULL, must_change_password INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL);
   ").map_err(|e| e.to_string())?;
   let _ = conn.execute("ALTER TABLE procedures ADD COLUMN archived INTEGER NOT NULL DEFAULT 0", []);
   let _ = conn.execute("ALTER TABLE steps ADD COLUMN archived INTEGER NOT NULL DEFAULT 0", []);
   let _ = conn.execute("ALTER TABLE runs ADD COLUMN operator_name TEXT", []);
   let _ = conn.execute("ALTER TABLE step_executions ADD COLUMN evidence_hash TEXT", []);
+  let _ = conn.execute("ALTER TABLE runs ADD COLUMN operator_user_id INTEGER", []);
+  let _ = conn.execute("ALTER TABLE runs ADD COLUMN shared_report_id TEXT", []);
+  let _ = conn.execute("ALTER TABLE runs ADD COLUMN shared_at TEXT", []);
   // BR-12: paused là giá trị cũ, trùng ngữ nghĩa với cancelled. Chuẩn hóa một chiều,
   // idempotent — sau lần đầu câu này khớp 0 row.
   conn.execute("UPDATE runs SET status='cancelled' WHERE status='paused'", []).map_err(|e| e.to_string())?;
@@ -97,6 +118,296 @@ fn procedure_scoped(conn: &Connection, id: i64, run_id: Option<&str>, only_execu
   p.steps = statement.query_map(params![id, run_id], |r| Ok(Step { id:r.get(0)?, procedure_id:r.get(1)?, order_index:r.get(2)?, title:r.get(3)?, description:r.get(4)?, command:r.get(5)?, requires_evidence:r.get(6)? })).map_err(|e| e.to_string())?.collect::<Result<Vec<_>,_>>().map_err(|e| e.to_string())?; Ok(p)
 }
 
+fn normalize_url(raw: &str) -> String { raw.trim().trim_end_matches('/').to_string() }
+const DEFAULT_SERVER_URL: &str = "http://localhost:8080";
+const SERVER_ENV_FILE: &str = "server.env";
+fn parse_env_value(text: &str, key: &str) -> Option<String> {
+  text.lines()
+    .map(str::trim)
+    .filter(|line| !line.is_empty() && !line.starts_with('#'))
+    .find_map(|line| line.strip_prefix(key)?.strip_prefix('=').map(|value| value.trim().trim_matches('"').to_string()))
+    .filter(|value| !value.is_empty())
+}
+/// Địa chỉ máy chủ **không** do người dùng nhập ở màn hình đăng nhập. Thứ tự ưu tiên:
+/// 1. biến môi trường `SOP_SERVER_URL` — tiện khi dev hoặc chạy thử nhiều máy chủ
+/// 2. file `server.env` trong thư mục dữ liệu app — người quản trị sửa được sau khi cài,
+///    không cần build lại installer
+/// 3. mặc định `http://localhost:8080`
+fn configured_server_url() -> String {
+  if let Ok(value) = std::env::var("SOP_SERVER_URL") {
+    if !value.trim().is_empty() { return normalize_url(&value); }
+  }
+  if let Ok(dir) = app_dir() {
+    if let Ok(text) = fs::read_to_string(dir.join(SERVER_ENV_FILE)) {
+      if let Some(value) = parse_env_value(&text, "SOP_SERVER_URL") { return normalize_url(&value); }
+    }
+  }
+  DEFAULT_SERVER_URL.to_string()
+}
+/// Tạo sẵn file cấu hình kèm hướng dẫn ở lần chạy đầu, để người quản trị biết sửa ở đâu.
+fn ensure_server_env_file() {
+  let Ok(dir) = app_dir() else { return };
+  let path = dir.join(SERVER_ENV_FILE);
+  if path.exists() { return; }
+  let _ = fs::write(&path, format!(
+    "# Địa chỉ máy chủ SOP Widget. Sửa dòng dưới rồi mở lại ứng dụng.\n\
+     # Biến môi trường SOP_SERVER_URL (nếu có) sẽ được ưu tiên hơn file này.\n\
+     SOP_SERVER_URL={DEFAULT_SERVER_URL}\n"));
+}
+#[tauri::command]
+fn server_url() -> String { configured_server_url() }
+// Đọc phiên đang lưu. Phiên quá hạn bị xóa ngay tại đây — BR-19: token 30 ngày, không gia hạn,
+// nên hết hạn là phải đăng nhập lại chứ không có đường vòng nào.
+fn read_session(conn: &Connection) -> Result<Option<StoredSession>, String> {
+  let row = conn.query_row("SELECT user_id,username,display_name,role,token,expires_at,server_url,must_change_password FROM auth_session WHERE id=1", [], |r| Ok(StoredSession {
+    session: AuthSession { user_id:r.get(0)?, username:r.get(1)?, display_name:r.get(2)?, role:r.get(3)?, expires_at:r.get(5)?, server_url:r.get(6)?, must_change_password:r.get::<_,i64>(7)? == 1 },
+    token: r.get(4)?
+  })).optional().map_err(|e| e.to_string())?;
+  let Some(stored) = row else { return Ok(None) };
+  let expired = chrono::DateTime::parse_from_rfc3339(&stored.session.expires_at).map(|at| at < Utc::now()).unwrap_or(true);
+  if expired { clear_session(conn)?; return Ok(None); }
+  Ok(Some(stored))
+}
+fn require_session(conn: &Connection) -> Result<StoredSession, String> {
+  read_session(conn)?.ok_or_else(|| "Bạn cần đăng nhập trước khi thực hiện thao tác này.".to_string())
+}
+fn clear_session(conn: &Connection) -> Result<(), String> { conn.execute("DELETE FROM auth_session", []).map_err(|e| e.to_string())?; Ok(()) }
+fn save_session(conn: &Connection, stored: &StoredSession) -> Result<(), String> {
+  clear_session(conn)?;
+  conn.execute("INSERT INTO auth_session (id,user_id,username,display_name,role,token,expires_at,server_url,must_change_password,created_at) VALUES (1,?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+    params![stored.session.user_id, stored.session.username, stored.session.display_name, stored.session.role, stored.token, stored.session.expires_at, stored.session.server_url, stored.session.must_change_password as i64, now()]).map_err(|e| e.to_string())?;
+  Ok(())
+}
+// Lỗi nghiệp vụ do server trả về đã là tiếng Việt hướng người dùng cuối, nên dùng thẳng.
+// Chỉ khi không đọc được thân phản hồi mới ghép message chung theo mã HTTP.
+fn api_message(status: reqwest::StatusCode, body: &str) -> String {
+  if let Ok(value) = serde_json::from_str::<serde_json::Value>(body) {
+    if let Some(message) = value.get("error").and_then(|e| e.get("message")).and_then(|m| m.as_str()) { return message.to_string(); }
+  }
+  format!("Máy chủ trả lỗi {}.", status.as_u16())
+}
+fn network_message(error: reqwest::Error) -> String {
+  if error.is_connect() || error.is_timeout() { "Không kết nối được máy chủ. Kiểm tra mạng hoặc địa chỉ máy chủ.".to_string() }
+  else { format!("Lỗi khi gọi máy chủ: {error}") }
+}
+
+#[tauri::command]
+async fn login(username: String, password: String) -> Result<AuthSession, String> {
+  let base = configured_server_url();
+  if !base.starts_with("http://") && !base.starts_with("https://") {
+    return Err(format!("Địa chỉ máy chủ trong cấu hình không hợp lệ: {base}"));
+  }
+  if username.trim().is_empty() || password.is_empty() { return Err("Vui lòng nhập tên đăng nhập và mật khẩu.".into()); }
+  let response = reqwest::Client::new().post(format!("{base}/api/v1/auth/login"))
+    .json(&serde_json::json!({ "username": username.trim(), "password": password }))
+    .send().await.map_err(network_message)?;
+  let status = response.status();
+  let body = response.text().await.map_err(network_message)?;
+  if !status.is_success() { return Err(api_message(status, &body)); }
+  let payload: serde_json::Value = serde_json::from_str(&body).map_err(|e| format!("Phản hồi của máy chủ không hợp lệ: {e}"))?;
+  let data = payload.get("data").ok_or("Phản hồi của máy chủ thiếu dữ liệu đăng nhập.")?;
+  let user = data.get("user").ok_or("Phản hồi của máy chủ thiếu thông tin tài khoản.")?;
+  let stored = StoredSession {
+    session: AuthSession {
+      user_id: user.get("id").and_then(|v| v.as_i64()).ok_or("Phản hồi của máy chủ thiếu mã tài khoản.")?,
+      username: user.get("username").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+      display_name: user.get("display_name").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+      role: user.get("role").and_then(|v| v.as_str()).unwrap_or("member").to_string(),
+      expires_at: data.get("expires_at").and_then(|v| v.as_str()).ok_or("Phản hồi của máy chủ thiếu thời hạn phiên.")?.to_string(),
+      server_url: base,
+      must_change_password: user.get("must_change_password").and_then(|v| v.as_bool()).unwrap_or(false)
+    },
+    token: data.get("token").and_then(|v| v.as_str()).ok_or("Phản hồi của máy chủ thiếu token.")?.to_string()
+  };
+  let conn = db()?;
+  save_session(&conn, &stored)?;
+  Ok(stored.session)
+}
+#[tauri::command]
+async fn logout() -> Result<(), String> {
+  // Đóng connection trước khi gọi HTTP: rusqlite::Connection không `Send` nên không giữ
+  // được qua `.await`. Mọi command async dưới đây theo cùng khuôn này.
+  let Some((base, token)) = ({ let conn = db()?; read_session(&conn)?.map(|s| (s.session.server_url, s.token)) }) else { return Ok(()) };
+  // Xóa phiên local bất kể server có phản hồi hay không: người dùng đã muốn thoát thì
+  // không được giữ họ lại chỉ vì mất mạng. Phiên trên server sẽ tự hết hạn.
+  let _ = reqwest::Client::new().post(format!("{base}/api/v1/auth/logout")).bearer_auth(&token).send().await;
+  let conn = db()?;
+  clear_session(&conn)
+}
+#[tauri::command]
+fn current_session() -> Result<Option<AuthSession>, String> { let conn = db()?; Ok(read_session(&conn)?.map(|stored| stored.session)) }
+// Gọi API có xác thực và trả về phần `data`.
+// Lỗi trả kèm cờ "phiên không còn hợp lệ" để caller tự dọn phiên local — hàm này không giữ
+// `Connection` vì rusqlite::Connection không `Send`, không mang qua `.await` được.
+async fn authed_post(base: &str, token: &str, path: &str, body: serde_json::Value) -> Result<serde_json::Value, (bool, String)> {
+  let response = reqwest::Client::new().post(format!("{base}{path}"))
+    .bearer_auth(token).json(&body).send().await.map_err(|e| (false, network_message(e)))?;
+  let status = response.status();
+  let text = response.text().await.map_err(|e| (false, network_message(e)))?;
+  if !status.is_success() {
+    return Err((status == reqwest::StatusCode::UNAUTHORIZED, api_message(status, &text)));
+  }
+  if text.trim().is_empty() { return Ok(serde_json::Value::Null); }
+  let payload: serde_json::Value = serde_json::from_str(&text).map_err(|e| (false, format!("Phản hồi của máy chủ không hợp lệ: {e}")))?;
+  Ok(payload.get("data").cloned().unwrap_or(serde_json::Value::Null))
+}
+async fn authed_get(base: &str, token: &str, path: &str) -> Result<serde_json::Value, (bool, String)> {
+  let response = reqwest::Client::new().get(format!("{base}{path}"))
+    .bearer_auth(token).send().await.map_err(|e| (false, network_message(e)))?;
+  let status = response.status();
+  let text = response.text().await.map_err(|e| (false, network_message(e)))?;
+  if !status.is_success() {
+    return Err((status == reqwest::StatusCode::UNAUTHORIZED, api_message(status, &text)));
+  }
+  let payload: serde_json::Value = serde_json::from_str(&text).map_err(|e| (false, format!("Phản hồi của máy chủ không hợp lệ: {e}")))?;
+  Ok(payload.get("data").cloned().unwrap_or(serde_json::Value::Null))
+}
+/// Dọn phiên local khi server báo phiên không còn hợp lệ, rồi trả message cho UI.
+fn handle_api_failure(unauthorized: bool, message: String) -> String {
+  if unauthorized { if let Ok(conn) = db() { let _ = clear_session(&conn); } }
+  message
+}
+fn parse_recipients(data: &serde_json::Value) -> Vec<Recipient> {
+  data.as_array().map(|items| items.iter().filter_map(|item| Some(Recipient {
+    id: item.get("id")?.as_i64()?,
+    display_name: item.get("display_name")?.as_str()?.to_string()
+  })).collect()).unwrap_or_default()
+}
+#[tauri::command]
+async fn list_members() -> Result<Vec<Recipient>, String> {
+  let stored = { let conn = db()?; require_session(&conn)? };
+  let data = authed_get(&stored.session.server_url, &stored.token, "/api/v1/users").await
+    .map_err(|(unauthorized, message)| handle_api_failure(unauthorized, message))?;
+  Ok(parse_recipients(&data))
+}
+#[tauri::command]
+async fn list_inbox() -> Result<Vec<InboxItem>, String> {
+  let stored = { let conn = db()?; require_session(&conn)? };
+  let data = authed_get(&stored.session.server_url, &stored.token, "/api/v1/reports/inbox?limit=50").await
+    .map_err(|(unauthorized, message)| handle_api_failure(unauthorized, message))?;
+  let base = stored.session.server_url;
+  Ok(data.as_array().map(|items| items.iter().filter_map(|item| {
+    let report_id = item.get("id")?.as_str()?.to_string();
+    Some(InboxItem {
+      share_url: format!("{base}/r/{report_id}"),
+      report_id,
+      run_id: item.get("run_id").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+      procedure_name: item.get("procedure_name").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+      operator_display_name: item.get("operator_display_name").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+      sender_display_name: item.get("sender").and_then(|s| s.get("display_name")).and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+      run_status: item.get("run_status").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+      created_at: item.get("created_at").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+      size_bytes: item.get("size_bytes").and_then(|v| v.as_u64()).unwrap_or(0),
+      first_viewed_at: item.get("first_viewed_at").and_then(|v| v.as_str()).map(|s| s.to_string())
+    })
+  }).collect()).unwrap_or_default())
+}
+// Mở link báo cáo bằng trình duyệt mặc định.
+// Chỉ nhận `report_id` rồi tự dựng URL từ máy chủ của phiên hiện tại — frontend không truyền
+// được URL tùy ý vào đây. `rundll32 url.dll,FileProtocolHandler` là cách mở URL của Windows,
+// tham số truyền trực tiếp cho tiến trình (không qua shell) nên không bị chèn lệnh.
+#[tauri::command]
+fn open_report_link(report_id: String) -> Result<String, String> {
+  if report_id.is_empty() || !report_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+    return Err("Mã báo cáo không hợp lệ.".into());
+  }
+  let base = { let conn = db()?; require_session(&conn)?.session.server_url };
+  if !base.starts_with("http://") && !base.starts_with("https://") {
+    return Err("Địa chỉ máy chủ không hợp lệ.".into());
+  }
+  let url = format!("{base}/r/{report_id}");
+  std::process::Command::new("rundll32").arg("url.dll,FileProtocolHandler").arg(&url)
+    .spawn().map_err(|e| format!("Không mở được trình duyệt: {e}"))?;
+  Ok(url)
+}
+// D4/BR-22: xuất file HTML ra máy TRƯỚC, rồi mới tải lên. Tải lên lỗi thì người dùng vẫn còn
+// file trong tay, không mất công chạy lại quy trình.
+#[tauri::command]
+async fn share_report(run_id: String, recipient_ids: Vec<i64>) -> Result<SharedReport, String> {
+  if recipient_ids.is_empty() { return Err("Vui lòng chọn ít nhất một người nhận.".into()); }
+  let local_path = export_report(run_id.clone())?;
+  let (stored, procedure_name, operator_display_name, run_started_at, run_status) = {
+    let conn = db()?;
+    let stored = require_session(&conn)?;
+    let details = get_run(run_id.clone())?;
+    let operator = details.run.operator_name.clone().filter(|name| !name.trim().is_empty())
+      .unwrap_or_else(|| stored.session.display_name.clone());
+    (stored, details.procedure.name, operator, details.run.started_at, details.run.status)
+  };
+  let bytes = fs::read(&local_path).map_err(|e| format!("Không đọc được tệp báo cáo vừa xuất: {e}"))?;
+  let size_bytes = bytes.len() as u64;
+  let file_name = Path::new(&local_path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| format!("report-{run_id}.html"));
+  let ids = serde_json::to_string(&recipient_ids).map_err(|e| e.to_string())?;
+  let form = reqwest::multipart::Form::new()
+    .text("run_id", run_id.clone())
+    .text("procedure_name", procedure_name)
+    .text("operator_display_name", operator_display_name)
+    .text("run_started_at", run_started_at)
+    .text("run_status", run_status)
+    .text("recipient_ids", ids)
+    .part("file", reqwest::multipart::Part::bytes(bytes).file_name(file_name)
+      .mime_str("text/html").map_err(|e| e.to_string())?);
+
+  let response = reqwest::Client::new().post(format!("{}/api/v1/reports", stored.session.server_url))
+    .bearer_auth(&stored.token).multipart(form).send().await.map_err(network_message)?;
+  let status = response.status();
+  let text = response.text().await.map_err(network_message)?;
+  if !status.is_success() {
+    return Err(handle_api_failure(status == reqwest::StatusCode::UNAUTHORIZED, api_message(status, &text)));
+  }
+  let payload: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("Phản hồi của máy chủ không hợp lệ: {e}"))?;
+  let data = payload.get("data").ok_or("Phản hồi của máy chủ thiếu dữ liệu báo cáo.")?;
+  let report_id = data.get("id").and_then(|v| v.as_str()).ok_or("Phản hồi của máy chủ thiếu mã báo cáo.")?.to_string();
+  let share_url = data.get("share_url").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+  let recipients = parse_recipients(data.get("recipients").unwrap_or(&serde_json::Value::Null));
+  {
+    let conn = db()?;
+    conn.execute("UPDATE runs SET shared_report_id=?1, shared_at=?2 WHERE id=?3", params![report_id, now(), run_id]).map_err(|e| e.to_string())?;
+  }
+  Ok(SharedReport { report_id, share_url, local_path, size_bytes, recipients })
+}
+#[tauri::command]
+async fn create_member(username: String, display_name: String, password: String, role: String) -> Result<Member, String> {
+  let username = username.trim().to_lowercase();
+  let display_name = display_name.trim().to_string();
+  if username.len() < 3 || username.len() > 64 || !username.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '.' || c == '_' || c == '-') {
+    return Err("Tên đăng nhập chỉ gồm chữ thường, số và các ký tự . _ - (3–64 ký tự).".into());
+  }
+  if display_name.is_empty() || display_name.chars().count() > 128 { return Err("Tên hiển thị phải có từ 1 đến 128 ký tự.".into()); }
+  if password.chars().count() < 8 { return Err("Mật khẩu phải có ít nhất 8 ký tự.".into()); }
+  if role != "admin" && role != "member" { return Err("Quyền không hợp lệ.".into()); }
+  let stored = { let conn = db()?; require_session(&conn)? };
+  // Chặn sớm để báo lỗi tiếng Việt ngay; server vẫn kiểm lại và là nguồn quyết định cuối.
+  if stored.session.role != "admin" { return Err("Chỉ quản trị viên mới tạo được tài khoản.".into()); }
+  let body = serde_json::json!({ "username": username, "display_name": display_name, "password": password, "role": role });
+  let data = authed_post(&stored.session.server_url, &stored.token, "/api/v1/users", body).await
+    .map_err(|(unauthorized, message)| handle_api_failure(unauthorized, message))?;
+  Ok(Member {
+    id: data.get("id").and_then(|v| v.as_i64()).ok_or("Phản hồi của máy chủ thiếu mã tài khoản.")?,
+    username: data.get("username").and_then(|v| v.as_str()).unwrap_or(&username).to_string(),
+    display_name: data.get("display_name").and_then(|v| v.as_str()).unwrap_or(&display_name).to_string(),
+    role: data.get("role").and_then(|v| v.as_str()).unwrap_or(&role).to_string(),
+    is_active: data.get("is_active").and_then(|v| v.as_bool()).unwrap_or(true),
+    must_change_password: data.get("must_change_password").and_then(|v| v.as_bool()).unwrap_or(true)
+  })
+}
+#[tauri::command]
+async fn change_own_password(current_password: String, new_password: String) -> Result<AuthSession, String> {
+  if new_password.chars().count() < 8 { return Err("Mật khẩu mới phải có ít nhất 8 ký tự.".into()); }
+  let stored = { let conn = db()?; require_session(&conn)? };
+  let body = serde_json::json!({ "current_password": current_password, "new_password": new_password });
+  // Sai mật khẩu hiện tại cũng trả 401 nhưng KHÔNG phải phiên hết hạn — không được dọn phiên,
+  // nếu không người dùng bị đẩy về màn hình đăng nhập chỉ vì gõ sai một lần.
+  if let Err((unauthorized, message)) = authed_post(&stored.session.server_url, &stored.token, "/api/v1/auth/password", body).await {
+    let session_lost = unauthorized && !message.contains("Mật khẩu hiện tại");
+    return Err(handle_api_failure(session_lost, message));
+  }
+  let updated = StoredSession { session: AuthSession { must_change_password: false, ..stored.session }, token: stored.token };
+  let conn = db()?;
+  save_session(&conn, &updated)?;
+  Ok(updated.session)
+}
+
 #[tauri::command]
 fn list_procedures() -> Result<Vec<Procedure>, String> { let conn=db()?; let ids=conn.prepare("SELECT id FROM procedures WHERE archived=0 ORDER BY updated_at DESC").map_err(|e|e.to_string())?.query_map([],|r|r.get(0)).map_err(|e|e.to_string())?.collect::<Result<Vec<i64>,_>>().map_err(|e|e.to_string())?; ids.into_iter().map(|id|procedure(&conn,id)).collect() }
 #[tauri::command]
@@ -125,8 +436,20 @@ fn save_procedure(input: ProcedureInput) -> Result<Procedure, String> {
 }
 #[tauri::command]
 fn delete_procedure(id: i64) -> Result<(), String> { let conn=db()?; conn.execute("UPDATE procedures SET archived=1,updated_at=?1 WHERE id=?2",params![now(),id]).map_err(|e|e.to_string())?; Ok(()) }
+// BR-23: tên người thực hiện lấy từ tài khoản đang đăng nhập, KHÔNG nhận từ frontend.
+// Đây là lý do tồn tại của tính năng đăng nhập — nếu tên vẫn do frontend truyền xuống thì
+// vẫn khai được tên bất kỳ và mục tiêu chống khai gian không đạt.
 #[tauri::command]
-fn start_run(procedure_id: i64, operator_name: String) -> Result<Run, String> { let conn=db()?; let _=procedure(&conn,procedure_id)?; let operator=Some(operator_name.trim().to_string()).filter(|s|!s.is_empty()); let run=Run { id:Uuid::new_v4().to_string(), procedure_id, status:"running".into(), started_at:now(), completed_at:None, operator_name:operator, procedure_name:None, confirmed_count:None, evidence_count:None }; conn.execute("INSERT INTO runs(id,procedure_id,status,started_at,operator_name) VALUES(?1,?2,?3,?4,?5)",params![run.id,run.procedure_id,run.status,run.started_at,run.operator_name]).map_err(|e|e.to_string())?; Ok(run) }
+fn start_run(procedure_id: i64) -> Result<Run, String> {
+  let conn = db()?;
+  let stored = require_session(&conn)?;
+  if stored.session.must_change_password { return Err("Bạn cần đổi mật khẩu trước khi chạy quy trình.".into()); }
+  let _ = procedure(&conn, procedure_id)?;
+  let run = Run { id:Uuid::new_v4().to_string(), procedure_id, status:"running".into(), started_at:now(), completed_at:None, operator_name:Some(stored.session.display_name.clone()), procedure_name:None, confirmed_count:None, evidence_count:None };
+  conn.execute("INSERT INTO runs(id,procedure_id,status,started_at,operator_name,operator_user_id) VALUES(?1,?2,?3,?4,?5,?6)",
+    params![run.id, run.procedure_id, run.status, run.started_at, run.operator_name, stored.session.user_id]).map_err(|e|e.to_string())?;
+  Ok(run)
+}
 #[tauri::command]
 fn get_run(run_id: String) -> Result<RunDetails, String> { let conn=db()?; let run=conn.query_row("SELECT id,procedure_id,status,started_at,completed_at,operator_name FROM runs WHERE id=?1",[&run_id],|r|Ok(Run{id:r.get(0)?,procedure_id:r.get(1)?,status:r.get(2)?,started_at:r.get(3)?,completed_at:r.get(4)?,operator_name:r.get(5)?,procedure_name:None,confirmed_count:None,evidence_count:None})).map_err(|e|e.to_string())?; let finished=run.status=="completed"||run.status=="cancelled"; let procedure=procedure_scoped(&conn,run.procedure_id,Some(run_id.as_str()),finished)?; let executions=conn.prepare("SELECT id,run_id,step_id,confirmed_at,notes,evidence_path,captured_at,evidence_hash FROM step_executions WHERE run_id=?1").map_err(|e|e.to_string())?.query_map([&run_id],|r|Ok(Execution{id:r.get(0)?,run_id:r.get(1)?,step_id:r.get(2)?,confirmed_at:r.get(3)?,notes:r.get(4)?,evidence_path:r.get(5)?,captured_at:r.get(6)?,evidence_hash:r.get(7)?})).map_err(|e|e.to_string())?.collect::<Result<Vec<_>,_>>().map_err(|e|e.to_string())?; Ok(RunDetails {run,procedure,executions}) }
 #[tauri::command]
@@ -199,4 +522,4 @@ fn evidence_cell(execution: Option<&Execution>) -> String {
 fn status_label(status: &str) -> &'static str { match status { "completed"=>"Hoàn thành", "cancelled"=>"Đã hủy", _=>"Đang chạy" } }
 fn html(value: &str) -> String { value.replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;").replace('"',"&quot;") }
 
-pub fn run() { tauri::Builder::default().invoke_handler(tauri::generate_handler![list_procedures,save_procedure,delete_procedure,start_run,get_run,confirm_step,set_run_status,capture_evidence,list_runs,export_report]).run(tauri::generate_context!()).expect("error while running SOP Widget"); }
+pub fn run() { ensure_server_env_file(); tauri::Builder::default().invoke_handler(tauri::generate_handler![server_url,login,logout,current_session,change_own_password,create_member,list_members,share_report,list_inbox,open_report_link,list_procedures,save_procedure,delete_procedure,start_run,get_run,confirm_step,set_run_status,capture_evidence,list_runs,export_report]).run(tauri::generate_context!()).expect("error while running SOP Widget"); }

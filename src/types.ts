@@ -51,3 +51,50 @@ export type Run = {
 };
 
 export type RunDetails = { run: Run; procedure: Procedure; executions: Execution[] };
+
+/**
+ * Phiên đăng nhập. Cố ý KHÔNG có `token` — token thô chỉ nằm ở phía Rust và trong SQLite
+ * local, frontend không bao giờ giữ nó (§13 của docs/spec/login-report-sharing.md).
+ */
+export type AuthSession = {
+  user_id: number;
+  username: string;
+  display_name: string;
+  role: 'admin' | 'member';
+  expires_at: string;
+  server_url: string;
+  must_change_password: boolean;
+};
+
+export type Member = {
+  id: number;
+  username: string;
+  display_name: string;
+  role: 'admin' | 'member';
+  is_active: boolean;
+  must_change_password: boolean;
+};
+
+/** Người nhận trong bộ chọn — server trả cho member đúng hai field này. */
+export type Recipient = { id: number; display_name: string };
+
+export type SharedReport = {
+  report_id: string;
+  share_url: string;
+  local_path: string;
+  size_bytes: number;
+  recipients: Recipient[];
+};
+
+export type InboxItem = {
+  report_id: string;
+  run_id: string;
+  procedure_name: string;
+  operator_display_name: string;
+  sender_display_name: string;
+  run_status: Run['status'];
+  created_at: string;
+  size_bytes: number;
+  first_viewed_at?: string | null;
+  share_url: string;
+};

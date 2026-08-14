@@ -1,0 +1,44 @@
+flowchart TD
+    classDef actor fill:#E6F1FB,stroke:#185FA5,color:#0C447C
+    classDef internal fill:#EAF3DE,stroke:#3B6D11,color:#27500A
+    classDef external fill:#FAECE7,stroke:#993C1D,color:#712B13
+    classDef error fill:#FCEBEB,stroke:#A32D2D,color:#791F1F
+
+    U(["Người dùng"]) --> OPEN["Mở app"]
+    OPEN --> HASSESS{"auth_session còn hạn?"}
+
+    HASSESS -- "Có" --> PICKER["Picker — danh sách quy trình"]
+    HASSESS -- "Không" --> LOGINVIEW["Màn hình đăng nhập"]
+
+    LOGINVIEW --> NET1{"Có mạng?"}
+    NET1 -- "Không" --> BLOCK["Chặn: không dùng được app"]
+    NET1 -- "Có" --> CALLLOGIN["POST /api/v1/auth/login"]
+    CALLLOGIN --> CRED{"Thông tin đúng?"}
+    CRED -- "Không" --> LOGINERR["Báo lỗi đăng nhập"]
+    LOGINERR --> LOGINVIEW
+    CRED -- "Có" --> SAVESESS["Ghi auth_session — token 30 ngày"]
+    SAVESESS --> PICKER
+
+    PICKER --> RUNSOP["Chạy SOP — toàn bộ local"]
+    RUNSOP --> DONE["Run completed"]
+    DONE --> EXPORT["export_report — ghi file HTML ra máy"]
+    EXPORT --> NET2{"Có mạng?"}
+
+    NET2 -- "Không" --> KEEPLOCAL["Giữ file local, đánh dấu chưa gửi"]
+    NET2 -- "Có" --> PICKRCP["Chọn người nhận từ danh sách member"]
+    PICKRCP --> UPLOAD["POST /api/v1/reports"]
+    UPLOAD --> SAVEREF["Lưu shared_report_id + share_url"]
+
+    SAVEREF --> RCP(["Người nhận"])
+    RCP --> INBOX["Hộp thư trong app — list_inbox"]
+    RCP --> WEBLINK["Mở link /r/{id} trên trình duyệt"]
+
+    INBOX --> PERM{"Là sender / recipient / admin?"}
+    WEBLINK --> PERM
+    PERM -- "Không" --> NF["404 Không tìm thấy báo cáo"]
+    PERM -- "Có" --> VIEW["Hiển thị / tải về báo cáo HTML"]
+
+    class U,RCP actor
+    class OPEN,PICKER,RUNSOP,DONE,EXPORT,SAVESESS,SAVEREF,KEEPLOCAL,PICKRCP,INBOX,LOGINVIEW internal
+    class CALLLOGIN,UPLOAD,WEBLINK,VIEW external
+    class BLOCK,LOGINERR,NF error

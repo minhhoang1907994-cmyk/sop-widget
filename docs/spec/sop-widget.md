@@ -1,12 +1,16 @@
 # SOP Widget — Specification
 
 ## 1. Tổng quan (Overview)
-- **Mục đích**: Ứng dụng desktop Windows chạy offline, giúp kỹ sư vận hành thực hiện quy trình chuẩn (SOP) theo từng bước có kiểm chứng, ép chụp ảnh màn hình làm bằng chứng ở bước bắt buộc, và xuất báo cáo HTML một file để gửi cho leader.
+- **Mục đích**: Ứng dụng desktop Windows giúp kỹ sư vận hành thực hiện quy trình chuẩn (SOP) theo từng bước có kiểm chứng, ép chụp ảnh màn hình làm bằng chứng ở bước bắt buộc, và xuất báo cáo HTML một file để gửi cho leader.
 - **Actor**: Kỹ sư vận hành (người cài và chạy app trên máy của chính mình)
 - **Priority**: High
-- **Phase**: Phase 1 (MVP đã có) + Phase 1.1 (các mục đánh dấu `[SỬA]` trong tài liệu này)
+- **Phase**: Phase 1 (MVP) + Phase 1.1 (các mục đánh dấu `[SỬA]` / `[MỚI]` trong tài liệu này) — **cả hai đã implement**
 - **Ngày soạn**: 2026-08-13
-- **Version**: 1.1
+- **Version**: 1.3
+
+> **Phạm vi của tài liệu này**: mô tả phần chạy SOP tại máy người dùng. Toàn bộ dữ liệu quy trình, lần chạy và ảnh bằng chứng nằm ở máy local và **không** đồng bộ lên server.
+>
+> Từ Phase 2, sản phẩm **không còn chạy offline hoàn toàn**: app yêu cầu đăng nhập bằng tài khoản trên server, và báo cáo được chia sẻ cho thành viên khác qua server. Phần đó đặc tả ở [`login-report-sharing.md`](login-report-sharing.md) và **chưa được implement**. Các mục bị Phase 2 thay đổi trong tài liệu này được đánh dấu `[Phase 2]`.
 
 ## 2. User Story
 > As a **kỹ sư vận hành**, I want to **chạy quy trình deploy/backup theo từng bước với ảnh bằng chứng bắt buộc** so that **tôi không nhảy sót bước và có báo cáo gửi leader chứng minh đã làm đúng trình tự**.
@@ -18,7 +22,9 @@
 | Kỹ sư vận hành | Toàn quyền create / read / update / archive quy trình; chạy SOP; xuất báo cáo | Trên máy của chính mình |
 | Leader / auditor | Chỉ đọc báo cáo HTML nhận được | Ngoài app, không có tài khoản trong hệ thống |
 
-App **không có cơ chế đăng nhập hay phân quyền**. Mọi người dùng trên cùng một máy Windows đều có toàn quyền với dữ liệu trong `%APPDATA%` của tài khoản đó.
+**Hiện tại (Phase 1.1 — đang chạy)**: app không có cơ chế đăng nhập hay phân quyền. Mọi người dùng trên cùng một máy Windows đều có toàn quyền với dữ liệu trong `%APPDATA%` của tài khoản đó.
+
+**`[Phase 2]`**: bổ sung hai role **Admin** và **Member** với tài khoản trên server — xem [`login-report-sharing.md`](login-report-sharing.md) §3. Quyền tạo/sửa/archive quy trình vẫn là quyền local của mọi người dùng trên máy của họ, không phân biệt role (xem Q11 của tài liệu đó).
 
 ## 4. Entity Schema
 
@@ -146,6 +152,10 @@ Errors:
 
 Frontend lấy `operatorName` từ Settings (`localStorage`) và truyền xuống. Backend **không** đọc được `localStorage`, nên tên phải đi qua tham số này.
 
+**`[Phase 2 — đã implement]`** `operatorName` **bị bỏ khỏi chữ ký lệnh**. `start_run(procedureId)` tự đọc `display_name` của tài khoản đang đăng nhập và ghi thêm `runs.operator_user_id`; lệnh trả lỗi `Bạn cần đăng nhập trước khi thực hiện thao tác này.` khi chưa có phiên.
+
+> v1.2 của tài liệu này ghi "chữ ký lệnh không đổi — chỉ đổi nguồn dữ liệu". Điều đó **sai** và đã được sửa ở v1.3: nếu frontend vẫn truyền tên xuống thì vẫn khai được tên bất kỳ, và mục tiêu chống khai gian — lý do tồn tại của cả tính năng đăng nhập — không đạt. Xem BR-23 của [`login-report-sharing.md`](login-report-sharing.md).
+
 **`confirm_step(runId, stepId, notes)`**
 
 | Condition | Message |
@@ -195,7 +205,8 @@ Mọi giá trị nhúng vào HTML phải đi qua hàm `html()` để escape `& <
 - [ ] App đã cài trên máy Windows của người vận hành
 - [ ] Thư mục `%APPDATA%\NTA\SOP Widget` ghi được
 - [ ] Quy trình cần chạy đã tồn tại và chưa bị archive
-- [ ] Người vận hành đã điền tên trong Settings `[MỚI]` **trước khi bắt đầu chạy** — tên được chụp lại vào `runs.operator_name` tại thời điểm `start_run`. Đổi tên trong Settings sau đó **không** làm thay đổi run đã tạo. Nếu bỏ trống, báo cáo in `(chưa đặt tên)`
+- [ ] Người vận hành đã điền tên trong Settings **trước khi bắt đầu chạy** — tên được chụp lại vào `runs.operator_name` tại thời điểm `start_run`. Đổi tên trong Settings sau đó **không** làm thay đổi run đã tạo. Nếu bỏ trống, báo cáo in `(chưa đặt tên)`
+- [ ] `[Phase 2]` Thay điều kiện trên bằng: **người vận hành đã đăng nhập**. Ô tên tự nhập trong Settings bị bỏ; tên lấy từ tài khoản (BR-23 của [`login-report-sharing.md`](login-report-sharing.md))
 
 ## 7. Luồng chính (Main Flow)
 
@@ -288,7 +299,7 @@ Mọi giá trị nhúng vào HTML phải đi qua hàm `html()` để escape `& <
 - **BR-12**: `paused` is a legacy value. On database open, every run still carrying it is rewritten to `cancelled`. The migration is idempotent and one-way — there is no path back to `paused`.
 - **BR-13**: `confirm_step` and `capture_evidence` must reject any run whose status is not `running`. A closed run accepts no further evidence and no further confirmation. `export_report` is exempt and works on any status.
 - **BR-14**: Archiving a procedure hides it from the picker and the editor but never hides its past runs. History lists runs of archived procedures, and their reports stay exportable.
-- **BR-15**: `operator_name` is captured into the run at `start_run` and is never rewritten. Changing the name in Settings afterwards does not alter runs that already exist.
+- **BR-15**: `operator_name` is captured into the run at `start_run` and is never rewritten. Changing the name in Settings afterwards does not alter runs that already exist. **`[Phase 2]` superseded by BR-23 of [`login-report-sharing.md`](login-report-sharing.md)**: the name is taken from the signed-in account instead of a free-text field. The snapshot-at-`start_run` behaviour itself is unchanged — only the source of the value.
 
 ## 11. State Machine — `runs.status` `[SỬA]`
 
@@ -315,13 +326,14 @@ Không được dùng nhãn "Tạm dừng" ở bất kỳ đâu — trạng thá
 
 ## 12. Security & Authorization
 
-- **Authentication**: not required. The app has no login and no user accounts.
-- **Authorization**: none. Anyone with access to the Windows account has full control over the data.
-- **Rate limiting**: N/A — local IPC only, no network surface.
+- **Authentication**: not required in Phase 1.1 — the app has no login and no user accounts. **`[Phase 2]` authentication becomes mandatory for the whole application**: a valid server session is required to open the app at all. See [`login-report-sharing.md`](login-report-sharing.md) §12.
+- **Authorization**: none in Phase 1.1. Anyone with access to the Windows account has full control over the local data. **`[Phase 2]` adds Admin/Member roles for account management and per-object access control on shared reports — but not on local SOP data, which stays fully accessible to whoever owns the Windows account.**
+- **Rate limiting**: N/A in Phase 1.1 — local IPC only, no network surface. **`[Phase 2]` the login endpoint is rate limited server-side.**
 - **Input validation**: all SQL uses `params![]` with `?n` placeholders, never string concatenation. All values interpolated into the exported HTML pass through `html()` which escapes `& < > "`.
 - **Sensitive data**: evidence screenshots may capture credentials, tokens or customer data visible on screen at capture time. The application does not detect or mask this. **The operator is responsible for what is on screen when capturing.**
 - **Tamper resistance**: `evidence_hash` detects a PNG replaced on disk after capture, when compared against the local database. It does **not** make an exported report trustworthy to a third party: the operator can edit the HTML file, including the printed hash, before sending it. Anyone reading this specification must not treat the report as tamper-proof evidence.
 - **Data at rest**: unencrypted SQLite file and unencrypted PNG files in the user profile.
+- **`[Phase 2]` Data in transit**: reports leave the machine. The exported HTML embeds the evidence screenshots, so everything noted under *Sensitive data* above now travels over the network and is stored on a shared server. Transport encryption is therefore a deployment blocker, not a nice-to-have — see [`login-report-sharing.md`](login-report-sharing.md) §12.
 
 ## 13. Integration Contract (người nhận báo cáo)
 
@@ -348,7 +360,7 @@ Không có file log riêng, không có log level. Toàn bộ dấu vết nằm t
 - **Performance**: no timing has been measured yet. The following are the targets to verify before release, not observed values: opening the procedure list returns within 300 ms with 50 procedures of 20 steps each; `export_report` finishes within 5 s for a run carrying 10 embedded images. Every command opens its own SQLite connection and re-runs the schema and migration statements, so the per-call overhead is a fixed cost that grows with neither data volume nor run count.
 - **Report size**: a full-screen PNG is typically 0.5–2 MB; base64 adds roughly 33%. A run with 5 evidence images can produce an HTML file of 3–13 MB. This may exceed mail attachment limits. No compression or downscaling is applied.
 - **Scalability**: single user, single machine. No concurrency between processes is handled — two instances of the app writing the same database is undefined behaviour.
-- **Availability**: fully offline, no external dependency.
+- **Availability**: fully offline with no external dependency in Phase 1.1. **`[Phase 2]` the split becomes**: running an SOP, capturing evidence, confirming steps, exporting a report to disk and browsing local history keep working without the network as long as a valid local session exists (BR-21 of [`login-report-sharing.md`](login-report-sharing.md)); signing in, listing members and sharing a report require the server. A user with no valid session and no network cannot open the app at all.
 - **Backward compatibility**: existing databases at `%APPDATA%` must keep working. New columns are added with `ALTER TABLE ADD COLUMN` and a default. Tables are never dropped.
 - **Accessibility**: not addressed. The window is a compact always-on-top widget with no keyboard navigation contract.
 
@@ -403,7 +415,7 @@ Không có file log riêng, không có log level. Toàn bộ dấu vết nằm t
 1. Run có 10 bước đều chụp ảnh → đo kích thước file HTML xuất ra, xác nhận có cảnh báo nếu vượt ngưỡng gửi mail thông thường
 
 ## 18. Open Questions
-- [ ] Q1: Ngưỡng kích thước báo cáo bao nhiêu thì cần cảnh báo hoặc nén ảnh? → Hỏi [PM]
+- [ ] **Q1 `[ưu tiên cao — Phase 2]`**: Ngưỡng kích thước báo cáo bao nhiêu thì cần cảnh báo hoặc nén ảnh? Từ Phase 2 câu này không còn là tùy chọn: file 3–13 MB phải đi qua mạng và bị chặn bởi giới hạn upload của server lẫn reverse proxy. Liên quan Q5 của [`login-report-sharing.md`](login-report-sharing.md) (cap tạm 25 MB) → Hỏi [PM]
 - [ ] Q2: Có cần dọn dẹp ảnh/run cũ sau N tháng không? Hiện dữ liệu tích lũy vô hạn → Hỏi [PM]
 - [ ] Q3: Máy nhiều màn hình có phổ biến trong team không? Nếu có thì chụp màn hình nào, hay chụp tất cả? → Hỏi [Dev/PM]
 - [ ] Q4: Run bị bỏ dở ở trạng thái `running` khi tắt app — xử lý thế nào? Hiện không có cơ chế nào chạm tới nó → Hỏi [PM]
@@ -431,6 +443,8 @@ Không câu nào trong Q1–Q7 chặn việc implement Phase 1.1.
 |---|---|---|---|
 | 1.0 | 2026-08-13 | Dev | Bản đầu, mô tả as-is + các mục `[SỬA]` đã chốt qua clarify |
 | 1.1 | 2026-08-13 | Dev | Fix 2 blocker + 6 warning từ `/nta-spec-review`: thêm `runs.operator_name` (blocker 1); thêm BR-13 chặn ghi vào run đã kết thúc (blocker 2); thêm luồng 8.4 archive quy trình; ghi rõ `list_runs` không lọc archived (BR-14); ghi rõ mọi command đều ghi DB; thay mô tả performance mơ hồ bằng chỉ tiêu đo được; thêm 5 test scenario; thêm bảng nhãn UI 11.1; thêm Q6, Q7 |
+| 1.3 | 2026-08-14 | Dev | Sửa §5.2: `start_run` **bỏ tham số `operatorName`** thay vì "giữ nguyên chữ ký" như v1.2 ghi — nếu frontend còn truyền tên thì mục tiêu chống khai gian không đạt. Ghi rõ đây là chỗ v1.2 nói sai, kèm lý do, để người đọc sau không tưởng là quyết định bị đổi vô cớ. Các mục `[Phase 2]` khác của v1.2 vẫn đúng |
+| 1.2 | 2026-08-14 | Dev | Đồng bộ với `login-report-sharing.md` v1.0 theo §22 của tài liệu đó. Không đổi hành vi nào đang chạy — chỉ gỡ các khẳng định nay đã sai và đánh dấu `[Phase 2]` cho phần bị thay đổi: §1 bỏ "chạy offline" khỏi mô tả sản phẩm và thêm phạm vi tài liệu; §3 bổ sung Admin/Member; §5.2 `start_run` đổi nguồn `operatorName`; §6 thêm điều kiện đã đăng nhập; §10 BR-15 được BR-23 thay thế; §12 viết lại Authentication/Authorization/Rate limiting và thêm Data in transit; §15 tách rõ phần offline và phần cần server; §18 nâng ưu tiên Q1; §21 chuyển "định danh người dùng tập trung" từ ngoài scope vào Phase 2. Phase 1 + 1.1 được ghi nhận là **đã implement** |
 
 ---
 
@@ -446,14 +460,14 @@ Không câu nào trong Q1–Q7 chặn việc implement Phase 1.1.
 - [x] Cột mới `evidence_hash` và 2 crate `sha2` + `base64` — **đã duyệt 2026-08-13**
 - [ ] Mục 12: hash **không** làm báo cáo đáng tin với bên thứ ba — cần leader hiểu đúng điều này
 - [ ] BR-14: archive quy trình không giấu run cũ khỏi History — xác nhận đúng mong muốn
-- [ ] BR-15: tên người thực hiện chốt tại lúc bắt đầu chạy, đổi Settings sau không ảnh hưởng run cũ
+- [x] BR-15: tên người thực hiện chốt tại lúc bắt đầu chạy, đổi Settings sau không ảnh hưởng run cũ — **Phase 2 thay nguồn tên bằng tài khoản đăng nhập (BR-23), cơ chế chốt-tại-`start_run` giữ nguyên**
 - [ ] Q1–Q7 ở mục 18 chưa có câu trả lời
 
 **Ảnh hưởng phần khác:** toàn bộ 4 module chính đều chạm `steps` / `step_executions`; đây là spec đầu tiên của project nên không có spec nào khác bị lệch
 
 **Không nằm trong scope lần này:**
 - Phân phối SOP tập trung cho team — mỗi máy giữ bản riêng
-- Định danh người dùng tập trung — chỉ có ô tên tự nhập trong Settings
-- Đồng bộ bằng chứng lên server
+- ~~Định danh người dùng tập trung~~ → **đã chuyển vào scope Phase 2 theo yêu cầu của PM ngày 2026-08-14**. Quyết định "chỉ có ô tên tự nhập trong Settings" của ngày 2026-08-13 bị lật; owner: PM. Đặc tả tại [`login-report-sharing.md`](login-report-sharing.md), quá trình làm rõ tại [`../clarify/clarify_login-report-sharing.md`](../clarify/clarify_login-report-sharing.md)
+- Đồng bộ **ảnh bằng chứng gốc** lên server — Phase 2 chỉ đưa file HTML đã nhúng base64 lên server, thư mục `evidence/` vẫn nằm ở máy
 - Chống can thiệp mức B / C / D
 - Snapshot step theo từng run

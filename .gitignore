@@ -6,6 +6,14 @@ target/
 # Node
 node_modules/
 
+# Cấu hình môi trường — chứa mật khẩu, không bao giờ commit (.env.example thì có)
+.env
+.env.local
+.env.*.local
+
+# File báo cáo do server lưu khi chạy local
+server/storage/
+
 # Frontend build output
 dist/
 *.tsbuildinfo
