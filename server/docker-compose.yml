@@ -9,7 +9,10 @@ services:
       MYSQL_USER: ${DB_USER:-sop}
       MYSQL_PASSWORD: ${DB_PASSWORD:-change-me}
     ports:
-      - "${DB_PORT:-3306}:3306"
+      # Bind vào 127.0.0.1, KHÔNG phải 0.0.0.0. Trên máy có IP công cộng, "3306:3306" nghĩa là
+      # MySQL mở ra Internet. Container `api` gọi qua network nội bộ nên không cần publish cổng;
+      # dòng này chỉ để chạy migrate/test từ host lúc phát triển.
+      - "127.0.0.1:${DB_PORT:-3306}:3306"
     volumes:
       - db-data:/var/lib/mysql
       # Tạo database riêng cho test khi container được khởi tạo lần đầu.
