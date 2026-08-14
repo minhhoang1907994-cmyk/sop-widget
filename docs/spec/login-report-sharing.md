@@ -752,7 +752,9 @@ Những câu này ban đầu để mở, nhưng implement không thể chờ nê
 ### 18.3 Chức năng đã đặc tả nhưng chưa implement `[v1.3]`
 
 Không phải câu hỏi, mà là việc còn lại — ghi ở đây để không bị lẫn với phần đã xong:
-`list_sent`, `download_report`, `reset_member_password`, `set_member_active` (xem §5.3), phân trang phía app cho hộp thư, và toàn bộ 4 file trong `docs/diagram/` vẫn đang là kiến trúc offline của Phase 1.
+`list_sent`, `download_report`, `reset_member_password`, `set_member_active` (xem §5.3), và phân trang phía app cho hộp thư.
+
+Sơ đồ trong `docs/diagram/` **đã cập nhật** cho kiến trúc v2.0 — xem §22.
 
 ## 19. Dependencies & Impact
 
@@ -833,4 +835,16 @@ v1.2 làm 8 mục, v1.3 làm mục §5.2 (v1.2 sửa nhưng sửa sai — xem c�
 | §18 Q1 | Ngưỡng kích thước báo cáo — chưa cấp thiết | Nâng ưu tiên: file nay phải đi qua mạng | v1.2 ✅ |
 | §21 | *"Định danh người dùng tập trung"* nằm ngoài scope | Chuyển vào scope Phase 2, ghi ngày và owner là PM | v1.2 ✅ |
 
-Còn lại **chưa đồng bộ**: 4 file trong `docs/diagram/` vẫn mô tả kiến trúc offline của Phase 1 — không có đăng nhập, không có server, không có luồng gửi/nhận báo cáo.
+### Sơ đồ trong `docs/diagram/` — đã đồng bộ `[v1.3]`
+
+| File | Trạng thái |
+|---|---|
+| `overview/overview-flow.drawio` | **Vẽ lại** — thêm cổng đăng nhập, buộc đổi mật khẩu, nhánh gửi báo cáo, panel tài khoản và hộp thư. Có legend phân biệt phần chạy được offline (xanh) với phần cần server (hồng) |
+| `overview/deployment.drawio` | **Mới** — máy người vận hành ↔ server ↔ MySQL + volume. Ghi rõ những gì server **không** nhận, việc bind cổng MySQL vào 127.0.0.1, và backup cần cả DB lẫn volume |
+| `module/detail-login.drawio` | **Mới** — sequence đăng nhập và buộc đổi mật khẩu, kèm 3 nhánh lỗi và ghi chú về hai loại 401 |
+| `module/detail-share-report.drawio` | **Mới** — sequence gửi và nhận báo cáo, chia 3 khối: ghi ra đĩa → upload → người nhận mở link |
+| `module/detail-run-sop.drawio` | **Cập nhật** — `start_run` đọc phiên và ghi `operator_user_id`, thêm bước tính SHA-256, ghi chú luồng này không chạm server |
+| `module/detail-export-report.drawio` | **Cập nhật** — sửa ghi chú sai từ v1.2 (nói báo cáo lưu đường dẫn ảnh dạng text, thực tế nhúng base64 theo BR-10); thêm ghi chú đây cũng là bước 1 của `share_report` |
+| `module/detail-save-procedure.drawio` | **Không đổi** — `save_procedure` không bị Phase 2 tác động, sơ đồ vẫn đúng |
+
+Chưa render được PNG/SVG: máy chưa cài draw.io CLI. Đã tự kiểm cấu trúc XML (parse được, id không trùng, mọi `source`/`target`/`parent` trỏ tới cell tồn tại, không có edge thiếu đầu nối) — 7/7 file pass.

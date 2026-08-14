@@ -42,8 +42,11 @@
         <mxCell id="m10" value="absolute path" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.82;entryX=1;entryY=0.82;" edge="1" source="fs" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="m11" value="path string, shown through setNotice" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.89;entryX=1;entryY=0.89;" edge="1" source="cmd" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <mxCell id="note_link" value="The report stores the evidence file path as plain text,&#10;not an embedded image. Moving the evidence folder&#10;breaks the reference in already exported reports." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
-          <mxGeometry x="1140" y="630" width="380" height="60" as="geometry" />
+        <mxCell id="note_link" value="Each evidence PNG is read and embedded as a base64 data URI (BR-10),&#10;so the exported file opens on a machine that has none of the originals.&#10;A missing PNG prints a warning line in that one cell instead of failing&#10;the whole report. evidence_hash is printed under the image as text." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="620" width="440" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="note_share" value="export_report is also step 1 of share_report: the file is always written&#10;to disk before any upload is attempted (D4 / BR-22). Exporting works on&#10;any run status, including a run still in progress." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#e6d0de;strokeColor=#996185;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="720" width="440" height="70" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

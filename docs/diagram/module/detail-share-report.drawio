@@ -1,0 +1,80 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="sop-widget-share" name="Share a report and receive it">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="sender" value="Sender&#10;(user1)" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="30" y="40" width="120" height="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="ui" value="React UI&#10;ShareReport / Inbox" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="200" y="40" width="150" height="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="cmd" value="Tauri command&#10;share_report / list_inbox" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="410" y="40" width="180" height="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="fs" value="Local disk&#10;reports\*.html" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="650" y="40" width="150" height="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="api" value="Server&#10;/api/v1/reports" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;" vertex="1" parent="1">
+          <mxGeometry x="860" y="40" width="170" height="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="store" value="MySQL + volume&#10;reports, report_recipients" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="40" width="180" height="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="recipient" value="Recipient&#10;(user2)" style="shape=umlLifeline;perimeter=mxPerimeter.rectanglePerimeter;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="40" width="140" height="1180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m1" value="Run completed → click Send report" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.04;entryX=0;entryY=0.04;" edge="1" source="sender" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m2" value="api.listMembers()" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.07;entryX=0;entryY=0.07;" edge="1" source="ui" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m3" value="GET /api/v1/users (Bearer)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.10;entryX=0;entryY=0.10;" edge="1" source="cmd" target="api" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m4" value="active users; a member gets only id + display_name,&#10;and never themselves" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.14;entryX=1;entryY=0.14;" edge="1" source="api" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m5" value="Tick one or more recipients" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.18;entryX=0;entryY=0.18;" edge="1" source="sender" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m6" value="api.shareReport(runId, recipientIds)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.21;entryX=0;entryY=0.21;" edge="1" source="ui" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="frame_local" value="1. always write to disk first (D4 / BR-22)" style="shape=umlFrame;whiteSpace=wrap;html=1;fillColor=none;dashed=1;strokeColor=#82b366;width=300;height=26;align=left;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="380" y="290" width="440" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="m7" value="export_report(runId) — HTML with base64 images" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.26;entryX=0;entryY=0.26;" edge="1" source="cmd" target="fs" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m8" value="report-{run_id}-{timestamp}.html" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.30;entryX=1;entryY=0.30;" edge="1" source="fs" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="frame_upload" value="2. upload" style="shape=umlFrame;whiteSpace=wrap;html=1;fillColor=none;dashed=1;strokeColor=#996185;width=140;height=26;align=left;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="380" y="440" width="900" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="m9" value="POST /api/v1/reports — multipart: file + run metadata + recipient_ids" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.36;entryX=0;entryY=0.36;" edge="1" source="cmd" target="api" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m10" value="recipient_ids: drop duplicates → drop the sender (BR-29)&#10;→ empty means 400 NO_RECIPIENT → each must exist and be active" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.40;entryX=1;entryY=0.40;strokeColor=#996185;fontColor=#996185;" edge="1" source="api" target="api" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m11" value="write /data/reports/{yyyy}/{MM}/{uuid}.html, compute its own sha256" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.44;entryX=0;entryY=0.44;" edge="1" source="api" target="store" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m12" value="transaction: INSERT reports (relative path) + one row per recipient" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.47;entryX=0;entryY=0.47;" edge="1" source="api" target="store" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m13" value="201 { id, share_url, size_bytes, sha256, recipients }" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.51;entryX=1;entryY=0.51;" edge="1" source="api" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m14" value="UPDATE runs SET shared_report_id, shared_at" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.54;entryX=0;entryY=0.54;strokeColor=#6c8ebf;" edge="1" source="cmd" target="fs" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m15" value="share link + copy button" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.58;entryX=1;entryY=0.58;" edge="1" source="cmd" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="alt_up" value="alt [upload fails — no network, 413, disk full] : error shown, but the HTML file is already on disk.&#10;shared_report_id is not written, so the run simply looks unsent and can be retried." style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;strokeColor=#b85450;fontColor=#b85450;exitX=0;exitY=0.62;entryX=1;entryY=0.62;" edge="1" source="cmd" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="frame_recv" value="3. the recipient reads it" style="shape=umlFrame;whiteSpace=wrap;html=1;fillColor=none;dashed=1;strokeColor=#6c8ebf;width=220;height=26;align=left;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="180" y="800" width="1290" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="m16" value="Open the account panel → Received reports" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=0;exitY=0.70;entryX=1;entryY=0.70;" edge="1" source="recipient" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m17" value="api.listInbox()" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.73;entryX=0;entryY=0.73;" edge="1" source="ui" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m18" value="GET /api/v1/reports/inbox?limit=50" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.76;entryX=0;entryY=0.76;" edge="1" source="cmd" target="api" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m19" value="SELECT via report_recipients WHERE user_id = me" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.79;entryX=0;entryY=0.79;" edge="1" source="api" target="store" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m20" value="each item carries sender.display_name and first_viewed_at" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.82;entryX=1;entryY=0.82;" edge="1" source="api" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m21" value="Click Open report" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=0;exitY=0.86;entryX=1;entryY=0.86;" edge="1" source="recipient" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m22" value="invoke(&apos;open_report_link&apos;, { reportId }) — URL built by Rust, not passed in" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.89;entryX=0;entryY=0.89;" edge="1" source="ui" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m23" value="browser opens {server}/r/{id} → web sign-in → 200 HTML under a strict CSP&#10;first read by a recipient sets first_viewed_at" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.93;entryX=0;entryY=0.93;strokeColor=#996185;" edge="1" source="cmd" target="api" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note_404" value="Anyone who is neither sender, recipient nor admin gets 404 — not 403 (BR-31).&#10;A forwarded link is therefore useless to an outsider, and report ids cannot be probed." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#e6d0de;strokeColor=#996185;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1240" width="480" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="note_web" value="The browser session is separate from the app session.&#10;Being signed in inside SOP Widget does not sign you in on the web —&#10;opening a share link the first time always asks for credentials." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="540" y="1240" width="470" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="note_size" value="A run with 5 evidence images is roughly 3–13 MB after base64.&#10;Server cap is 25 MB (Q5). The reverse proxy body limit must be&#10;aligned or uploads fail with an error the app cannot explain." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="1240" width="440" height="70" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,102 +1,195 @@
 <mxfile host="app.diagrams.net" type="device">
-  <diagram id="sop-widget-overview" name="SOP Widget Overview">
-    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+  <diagram id="sop-widget-overview" name="SOP Widget Overview v2.0">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="2100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
-        <mxCell id="start" value="App Launch" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
-          <mxGeometry x="340" y="40" width="180" height="60" as="geometry" />
+        <mxCell id="legend" value="Legend" style="swimlane;whiteSpace=wrap;html=1;startSize=24;fillColor=none;strokeColor=#999999;dashed=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="40" width="280" height="150" as="geometry" />
         </mxCell>
+        <mxCell id="lg1" value="Local only — no network needed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="legend">
+          <mxGeometry x="10" y="30" width="260" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2" value="Requires the server" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=10;" vertex="1" parent="legend">
+          <mxGeometry x="10" y="62" width="260" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="lg3" value="Decision" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="legend">
+          <mxGeometry x="10" y="94" width="120" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="lg4" value="Blocked" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="legend">
+          <mxGeometry x="150" y="94" width="120" height="26" as="geometry" />
+        </mxCell>
+
+        <mxCell id="start" value="App Launch" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="540" y="40" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="session" value="current_session&#10;valid and not expired?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="510" y="140" width="240" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="login" value="Login view&#10;username + password" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;" vertex="1" parent="1">
+          <mxGeometry x="120" y="155" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="net" value="Server reachable?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="110" y="265" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="blocked" value="Cannot use the app&#10;no session + no network" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="120" y="395" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mustchange" value="must_change_password?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="360" y="265" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="changepw" value="Change password&#10;forced before anything else&#10;server also rejects with 403" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;" vertex="1" parent="1">
+          <mxGeometry x="360" y="395" width="220" height="70" as="geometry" />
+        </mxCell>
+
         <mxCell id="load" value="Load procedures&#10;list_procedures (archived = 0)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="330" y="150" width="200" height="60" as="geometry" />
+          <mxGeometry x="530" y="530" width="200" height="60" as="geometry" />
         </mxCell>
         <mxCell id="picker" value="Procedure Picker&#10;search / select" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="330" y="260" width="200" height="60" as="geometry" />
+          <mxGeometry x="530" y="640" width="200" height="60" as="geometry" />
         </mxCell>
         <mxCell id="action" value="Action?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="320" y="370" width="220" height="80" as="geometry" />
+          <mxGeometry x="520" y="750" width="220" height="80" as="geometry" />
         </mxCell>
 
         <mxCell id="builder" value="Procedure Builder&#10;create / edit / archive" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
-          <mxGeometry x="50" y="530" width="190" height="60" as="geometry" />
+          <mxGeometry x="120" y="910" width="190" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="save" value="save_procedure&#10;transaction: replace all steps" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
-          <mxGeometry x="50" y="640" width="190" height="60" as="geometry" />
+        <mxCell id="save" value="save_procedure&#10;archive all steps, revive the kept ones" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1020" width="190" height="70" as="geometry" />
         </mxCell>
 
         <mxCell id="history" value="Run History&#10;list_runs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
-          <mxGeometry x="640" y="530" width="190" height="60" as="geometry" />
+          <mxGeometry x="950" y="910" width="190" height="60" as="geometry" />
         </mxCell>
 
-        <mxCell id="startrun" value="start_run&#10;create run (uuid, status = running)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="330" y="530" width="200" height="60" as="geometry" />
+        <mxCell id="startrun" value="start_run(procedureId)&#10;operator taken from the session&#10;writes operator_name + operator_user_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="510" y="900" width="240" height="80" as="geometry" />
         </mxCell>
         <mxCell id="runner" value="Run Execution&#10;show current step" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="330" y="640" width="200" height="60" as="geometry" />
+          <mxGeometry x="530" y="1020" width="200" height="60" as="geometry" />
         </mxCell>
         <mxCell id="needev" value="requires_evidence?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="320" y="750" width="220" height="80" as="geometry" />
+          <mxGeometry x="520" y="1120" width="220" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="capture" value="Evidence Capture&#10;full screen PNG saved per run" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
-          <mxGeometry x="620" y="760" width="210" height="60" as="geometry" />
+        <mxCell id="capture" value="Evidence Capture&#10;PNG + SHA-256 per run" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="830" y="1130" width="210" height="60" as="geometry" />
         </mxCell>
         <mxCell id="confirm" value="Confirm step&#10;confirmed_at + notes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="330" y="880" width="200" height="60" as="geometry" />
+          <mxGeometry x="530" y="1250" width="200" height="60" as="geometry" />
         </mxCell>
         <mxCell id="last" value="Last step?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="320" y="990" width="220" height="80" as="geometry" />
+          <mxGeometry x="520" y="1360" width="220" height="80" as="geometry" />
         </mxCell>
         <mxCell id="done" value="Run Completed&#10;set_run_status(completed)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
-          <mxGeometry x="330" y="1120" width="200" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="export" value="Report Export&#10;export_report to HTML file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
-          <mxGeometry x="330" y="1230" width="200" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="end" value="End" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
-          <mxGeometry x="340" y="1340" width="180" height="60" as="geometry" />
+          <mxGeometry x="530" y="1490" width="200" height="60" as="geometry" />
         </mxCell>
 
-        <mxCell id="settings" value="Widget Settings&#10;transparency / background&#10;stored in localStorage" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#999999;" vertex="1" parent="1">
-          <mxGeometry x="880" y="150" width="200" height="70" as="geometry" />
+        <mxCell id="finish" value="What next?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1600" width="220" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="settings_note" value="Available from the title bar in every view" style="text;html=1;align=center;fontSize=11;fontColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="870" y="225" width="220" height="20" as="geometry" />
+        <mxCell id="export" value="Export to disk&#10;export_report → HTML with base64 images" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="140" y="1600" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="share" value="Share report&#10;pick recipients → share_report" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;" vertex="1" parent="1">
+          <mxGeometry x="880" y="1600" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="uploaded" value="Report stored on the server&#10;share link returned" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;" vertex="1" parent="1">
+          <mxGeometry x="880" y="1720" width="230" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="end" value="End" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="540" y="1900" width="180" height="60" as="geometry" />
         </mxCell>
 
-        <mxCell id="e_start" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="start" target="load" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="titlebar" value="Title bar — available in every view" style="swimlane;whiteSpace=wrap;html=1;startSize=26;fillColor=none;strokeColor=#999999;dashed=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="230" width="300" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="account" value="Account panel&#10;signed-in user, role, server, expiry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=11;" vertex="1" parent="titlebar">
+          <mxGeometry x="20" y="36" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="inbox" value="Received reports&#10;list_inbox — who sent it, when" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=11;" vertex="1" parent="titlebar">
+          <mxGeometry x="20" y="110" width="260" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="openlink" value="Open report&#10;browser — separate web sign-in" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=11;" vertex="1" parent="titlebar">
+          <mxGeometry x="20" y="180" width="260" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="newaccount" value="Add account (admin only)&#10;create_member" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=11;" vertex="1" parent="titlebar">
+          <mxGeometry x="20" y="250" width="260" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="settings" value="Widget Settings&#10;transparency / background — localStorage" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="580" width="260" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="note_offline" value="Once a session exists, everything in blue keeps working&#10;without the network (BR-21): running an SOP, capturing&#10;evidence, confirming steps, exporting to disk, local history.&#10;Only the pink boxes need the server." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="60" y="490" width="380" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="note_operator" value="The operator name is no longer typed by hand.&#10;It comes from the signed-in account (BR-23), which&#10;is the whole reason login was added." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="790" y="890" width="330" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="note_share" value="share_report always writes the HTML to disk first,&#10;then uploads (D4 / BR-22). If the upload fails the&#10;operator still holds the file and nothing is rerun." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#e6d0de;strokeColor=#996185;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="1600" width="250" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_start" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="start" target="session" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_nosession" value="No / expired" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" source="session" target="login" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_net" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="login" target="net" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_noneton" value="No" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="net" target="blocked" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_retry" value="retry" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="blocked" target="login" parent="1">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="70" y="425" /><mxPoint x="70" y="185" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e_signedin" value="Yes, signed in" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="net" target="mustchange" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_forced" value="Yes" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="mustchange" target="changepw" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_changed" value="changed" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="changepw" target="load" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_nochange" value="No" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="mustchange" target="load" parent="1">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="620" y="305" /><mxPoint x="470" y="305" /><mxPoint x="470" y="560" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e_hassession" value="Yes" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="session" target="load" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
         <mxCell id="e_load" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="load" target="picker" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="e_picker" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="picker" target="action" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
 
         <mxCell id="e_builder" value="Create / Edit" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=0;exitY=0.5;entryX=0.5;entryY=0;" edge="1" source="action" target="builder" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="e_save" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="builder" target="save" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="e_saveback" value="Reload list" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="save" target="picker" parent="1">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="20" y="670" /><mxPoint x="20" y="290" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="80" y="1055" /><mxPoint x="80" y="670" /></Array></mxGeometry>
         </mxCell>
 
         <mxCell id="e_history" value="History" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;entryX=0.5;entryY=0;" edge="1" source="action" target="history" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e_histexport" value="Export HTML" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" edge="1" source="history" target="export" parent="1">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1000" y="560" /><mxPoint x="1000" y="1260" /></Array></mxGeometry>
+        <mxCell id="e_histfinish" value="Export or share&#10;an older run" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" edge="1" source="history" target="finish" parent="1">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1230" y="940" /><mxPoint x="1230" y="1450" /><mxPoint x="800" y="1450" /><mxPoint x="800" y="1640" /></Array></mxGeometry>
         </mxCell>
 
         <mxCell id="e_run" value="Start Run" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="action" target="startrun" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="e_runner" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="startrun" target="runner" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="e_needev" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="runner" target="needev" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="e_yes" value="Yes" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="needev" target="capture" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e_capdone" value="evidence_path saved" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=0.5;exitY=1;entryX=1;entryY=0.5;" edge="1" source="capture" target="confirm" parent="1">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="725" y="910" /></Array></mxGeometry>
+        <mxCell id="e_capdone" value="evidence_path + evidence_hash" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=0.5;exitY=1;entryX=1;entryY=0.5;" edge="1" source="capture" target="confirm" parent="1">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="935" y="1280" /></Array></mxGeometry>
         </mxCell>
         <mxCell id="e_no" value="No" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="needev" target="confirm" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="e_last" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="confirm" target="last" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="e_next" value="No, next step" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="last" target="runner" parent="1">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="270" y="1030" /><mxPoint x="270" y="670" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="470" y="1400" /><mxPoint x="470" y="1050" /></Array></mxGeometry>
         </mxCell>
         <mxCell id="e_done" value="Yes" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="last" target="done" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e_export" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="done" target="export" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e_end" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="export" target="end" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_finish" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="done" target="finish" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_export" value="Export only" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" source="finish" target="export" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_share" value="Send to members" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="finish" target="share" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_uploaded" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="share" target="uploaded" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_endexport" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=0.5;exitY=1;entryX=0;entryY=0.5;" edge="1" source="export" target="end" parent="1">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="255" y="1930" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e_endshare" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=0.5;exitY=1;entryX=1;entryY=0.5;" edge="1" source="uploaded" target="end" parent="1">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="995" y="1930" /></Array></mxGeometry>
+        </mxCell>
 
-        <mxCell id="e_pause" value="Cancel run&#10;set_run_status(cancelled)&#10;confirmed steps are kept" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" edge="1" source="runner" target="picker" parent="1">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="580" y="670" /><mxPoint x="580" y="290" /></Array></mxGeometry>
+        <mxCell id="e_cancel" value="Cancel run&#10;set_run_status(cancelled)&#10;confirmed steps are kept" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" edge="1" source="runner" target="picker" parent="1">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="790" y="1050" /><mxPoint x="790" y="670" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e_signout" value="Sign out&#10;clears auth_session" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" source="account" target="login" parent="1">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1060" y="296" /><mxPoint x="1060" y="120" /><mxPoint x="400" y="120" /><mxPoint x="400" y="185" /></Array></mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>

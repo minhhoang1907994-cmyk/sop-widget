@@ -30,8 +30,9 @@
 
         <mxCell id="m1" value="Select a procedure" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.05;entryX=0;entryY=0.05;" edge="1" source="user" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="m2" value="api.startRun(id)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.09;entryX=0;entryY=0.09;" edge="1" source="ui" target="apits" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m3" value="invoke(&apos;start_run&apos;, { procedureId })" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.12;entryX=0;entryY=0.12;" edge="1" source="apits" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m4" value="INSERT INTO runs (id = uuid v4, status = running, started_at)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.16;entryX=0;entryY=0.16;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m3" value="invoke(&apos;start_run&apos;, { procedureId }) — no operator name is passed" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.12;entryX=0;entryY=0.12;" edge="1" source="apits" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m3b" value="SELECT * FROM auth_session — no session, or must_change_password: Err shown as a notice" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.14;entryX=0;entryY=0.14;strokeColor=#996185;fontColor=#996185;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m4" value="INSERT INTO runs (id = uuid v4, status = running, started_at,&#10;operator_name + operator_user_id from the session)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.17;entryX=0;entryY=0.17;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="m5" value="ok" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.19;entryX=1;entryY=0.19;" edge="1" source="db" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="m6" value="Run" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.22;entryX=1;entryY=0.22;" edge="1" source="cmd" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
 
@@ -45,7 +46,8 @@
         <mxCell id="m13" value="invoke(&apos;capture_evidence&apos;)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.48;entryX=0;entryY=0.48;" edge="1" source="apits" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="m14" value="Screen::all() first screen, capture and save PNG" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.52;entryX=0;entryY=0.52;" edge="1" source="cmd" target="fs" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="m15" value="evidence\{run_id}\step-{step_id}-{timestamp}.png" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.55;entryX=1;entryY=0.55;" edge="1" source="fs" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m16" value="INSERT INTO step_executions ... ON CONFLICT(run_id, step_id) DO UPDATE evidence_path" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.59;entryX=0;entryY=0.59;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m15b" value="sha256 of the PNG just written (BR-09) — computed once, never recomputed on export" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.57;entryX=1;entryY=0.57;strokeColor=#d79b00;fontColor=#d79b00;" edge="1" source="cmd" target="cmd" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m16" value="INSERT INTO step_executions ... ON CONFLICT(run_id, step_id)&#10;DO UPDATE evidence_path, captured_at, evidence_hash" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.60;entryX=0;entryY=0.60;" edge="1" source="cmd" target="db" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="m17" value="path string - reload run details" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;dashed=1;exitX=0;exitY=0.62;entryX=1;entryY=0.62;" edge="1" source="cmd" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
 
         <mxCell id="m18" value="Click Confirm step (with optional notes)" style="edgeStyle=elbowEdgeStyle;elbow=vertical;html=1;exitX=1;exitY=0.66;entryX=0;entryY=0.66;" edge="1" source="user" target="ui" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
@@ -61,6 +63,12 @@
 
         <mxCell id="note_db" value="Every command opens its own connection through db():&#10;PRAGMA foreign_keys, CREATE TABLE IF NOT EXISTS, seed on empty DB" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;align=left;" vertex="1" parent="1">
           <mxGeometry x="1100" y="1240" width="320" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="note_offline" value="Nothing in this sequence touches the server. Once signed in, the whole run&#10;works offline (BR-21) — start_run only reads the session that is already&#10;stored locally, it does not verify it against the server." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#e6d0de;strokeColor=#996185;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="620" y="1240" width="450" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="note_operator" value="The operator name comes from the signed-in account (BR-23).&#10;It is no longer a parameter, so the frontend cannot claim&#10;somebody else&apos;s name — that is the point of the login." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="140" y="1240" width="440" height="65" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
