@@ -1,7 +1,7 @@
 {
   "name": "sop-widget-server",
   "private": true,
-  "version": "0.1.0",
+  "version": "2.0.0",
   "type": "module",
   "description": "Accounts and report sharing backend for SOP Widget",
   "scripts": {

@@ -1,6 +1,6 @@
 [package]
 name = "sop-widget"
-version = "0.1.0"
+version = "2.0.0"
 description = "Local SOP runner with evidence capture"
 authors = ["Nitro Tech Asia"]
 edition = "2021"
