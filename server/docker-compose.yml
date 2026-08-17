@@ -1,6 +1,9 @@
 services:
   db:
     image: mysql:8.0
+    # Tự dựng lại khi Docker khởi động (máy bật lên, Docker Desktop chạy) nhưng tôn trọng
+    # `docker compose stop` — dừng tay thì vẫn nằm im cho tới khi `up` lại.
+    restart: unless-stopped
     command: --default-time-zone=+00:00
     environment:
       TZ: UTC
@@ -28,6 +31,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
       TZ: UTC
       PORT: 8080

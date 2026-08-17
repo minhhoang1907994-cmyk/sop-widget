@@ -13,7 +13,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.0.0", features = [] }
 
 [dependencies]
-tauri = { version = "2.0.0", features = [] }
+# macos-private-api: bắt buộc cho cửa sổ transparent trên macOS (app.macOSPrivateApi trong
+# tauri.conf.json). Trên Windows feature này không có tác dụng gì.
+tauri = { version = "2.0.0", features = ["macos-private-api"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }

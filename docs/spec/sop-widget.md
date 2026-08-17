@@ -1,12 +1,12 @@
 # SOP Widget — Specification
 
 ## 1. Tổng quan (Overview)
-- **Mục đích**: Ứng dụng desktop Windows giúp kỹ sư vận hành thực hiện quy trình chuẩn (SOP) theo từng bước có kiểm chứng, ép chụp ảnh màn hình làm bằng chứng ở bước bắt buộc, và xuất báo cáo HTML một file để gửi cho leader.
+- **Mục đích**: Ứng dụng desktop (Windows và macOS) giúp kỹ sư vận hành thực hiện quy trình chuẩn (SOP) theo từng bước có kiểm chứng, ép chụp ảnh màn hình làm bằng chứng ở bước bắt buộc, và xuất báo cáo HTML một file để gửi cho leader.
 - **Actor**: Kỹ sư vận hành (người cài và chạy app trên máy của chính mình)
 - **Priority**: High
 - **Phase**: Phase 1 (MVP) + Phase 1.1 (các mục đánh dấu `[SỬA]` / `[MỚI]` trong tài liệu này) — **cả hai đã implement**
 - **Ngày soạn**: 2026-08-13
-- **Version**: 1.3
+- **Version**: 1.4
 
 > **Phạm vi của tài liệu này**: mô tả phần chạy SOP tại máy người dùng. Toàn bộ dữ liệu quy trình, lần chạy và ảnh bằng chứng nằm ở máy local và **không** đồng bộ lên server.
 >
@@ -22,7 +22,7 @@
 | Kỹ sư vận hành | Toàn quyền create / read / update / archive quy trình; chạy SOP; xuất báo cáo | Trên máy của chính mình |
 | Leader / auditor | Chỉ đọc báo cáo HTML nhận được | Ngoài app, không có tài khoản trong hệ thống |
 
-**Hiện tại (Phase 1.1 — đang chạy)**: app không có cơ chế đăng nhập hay phân quyền. Mọi người dùng trên cùng một máy Windows đều có toàn quyền với dữ liệu trong `%APPDATA%` của tài khoản đó.
+**Hiện tại (Phase 1.1 — đang chạy)**: app không có cơ chế đăng nhập hay phân quyền. Mọi người dùng trên cùng một tài khoản hệ điều hành đều có toàn quyền với dữ liệu trong thư mục dữ liệu của tài khoản đó (`%APPDATA%\NTA\SOP Widget` trên Windows, `~/Library/Application Support/NTA/SOP Widget` trên macOS).
 
 **`[Phase 2]`**: bổ sung hai role **Admin** và **Member** với tài khoản trên server — xem [`login-report-sharing.md`](login-report-sharing.md) §3. Quyền tạo/sửa/archive quy trình vẫn là quyền local của mọi người dùng trên máy của họ, không phân biệt role (xem Q11 của tài liệu đó).
 
@@ -202,8 +202,9 @@ Xuất báo cáo được phép ở **mọi trạng thái run**, kể cả `runn
 Mọi giá trị nhúng vào HTML phải đi qua hàm `html()` để escape `& < > "`.
 
 ## 6. Điều kiện tiên quyết (Preconditions)
-- [ ] App đã cài trên máy Windows của người vận hành
-- [ ] Thư mục `%APPDATA%\NTA\SOP Widget` ghi được
+- [ ] App đã cài trên máy Windows hoặc macOS của người vận hành
+- [ ] Thư mục dữ liệu ghi được — `%APPDATA%\NTA\SOP Widget` (Windows) hoặc `~/Library/Application Support/NTA/SOP Widget` (macOS)
+- [ ] Trên macOS: đã cấp quyền **Screen Recording** cho app, nếu không `capture_evidence` sẽ lỗi ở bước bắt buộc ảnh bằng chứng
 - [ ] Quy trình cần chạy đã tồn tại và chưa bị archive
 - [ ] Người vận hành đã điền tên trong Settings **trước khi bắt đầu chạy** — tên được chụp lại vào `runs.operator_name` tại thời điểm `start_run`. Đổi tên trong Settings sau đó **không** làm thay đổi run đã tạo. Nếu bỏ trống, báo cáo in `(chưa đặt tên)`
 - [ ] `[Phase 2]` Thay điều kiện trên bằng: **người vận hành đã đăng nhập**. Ô tên tự nhập trong Settings bị bỏ; tên lấy từ tài khoản (BR-23 của [`login-report-sharing.md`](login-report-sharing.md))
@@ -327,7 +328,7 @@ Không được dùng nhãn "Tạm dừng" ở bất kỳ đâu — trạng thá
 ## 12. Security & Authorization
 
 - **Authentication**: not required in Phase 1.1 — the app has no login and no user accounts. **`[Phase 2]` authentication becomes mandatory for the whole application**: a valid server session is required to open the app at all. See [`login-report-sharing.md`](login-report-sharing.md) §12.
-- **Authorization**: none in Phase 1.1. Anyone with access to the Windows account has full control over the local data. **`[Phase 2]` adds Admin/Member roles for account management and per-object access control on shared reports — but not on local SOP data, which stays fully accessible to whoever owns the Windows account.**
+- **Authorization**: none in Phase 1.1. Anyone with access to the operating-system account has full control over the local data. **`[Phase 2]` adds Admin/Member roles for account management and per-object access control on shared reports — but not on local SOP data, which stays fully accessible to whoever owns the operating-system account.**
 - **Rate limiting**: N/A in Phase 1.1 — local IPC only, no network surface. **`[Phase 2]` the login endpoint is rate limited server-side.**
 - **Input validation**: all SQL uses `params![]` with `?n` placeholders, never string concatenation. All values interpolated into the exported HTML pass through `html()` which escapes `& < > "`.
 - **Sensitive data**: evidence screenshots may capture credentials, tokens or customer data visible on screen at capture time. The application does not detect or mask this. **The operator is responsible for what is on screen when capturing.**
@@ -361,7 +362,8 @@ Không có file log riêng, không có log level. Toàn bộ dấu vết nằm t
 - **Report size**: a full-screen PNG is typically 0.5–2 MB; base64 adds roughly 33%. A run with 5 evidence images can produce an HTML file of 3–13 MB. This may exceed mail attachment limits. No compression or downscaling is applied.
 - **Scalability**: single user, single machine. No concurrency between processes is handled — two instances of the app writing the same database is undefined behaviour.
 - **Availability**: fully offline with no external dependency in Phase 1.1. **`[Phase 2]` the split becomes**: running an SOP, capturing evidence, confirming steps, exporting a report to disk and browsing local history keep working without the network as long as a valid local session exists (BR-21 of [`login-report-sharing.md`](login-report-sharing.md)); signing in, listing members and sharing a report require the server. A user with no valid session and no network cannot open the app at all.
-- **Backward compatibility**: existing databases at `%APPDATA%` must keep working. New columns are added with `ALTER TABLE ADD COLUMN` and a default. Tables are never dropped.
+- **Platform**: Windows and macOS from the same source tree. Platform-specific behaviour is limited to two places in `lib.rs`: the data directory (`%APPDATA%` vs `~/Library/Application Support`) and the command used to open a URL (`rundll32` vs `open`). Each installer must be built on its own operating system — a Windows machine cannot produce a macOS build. Screen capture on macOS requires the user to grant Screen Recording permission; on Windows no permission prompt exists.
+- **Backward compatibility**: existing databases at the platform data directory must keep working. New columns are added with `ALTER TABLE ADD COLUMN` and a default. Tables are never dropped.
 - **Accessibility**: not addressed. The window is a compact always-on-top widget with no keyboard navigation contract.
 
 ## 16. Edge Cases
@@ -443,6 +445,7 @@ Không câu nào trong Q1–Q7 chặn việc implement Phase 1.1.
 |---|---|---|---|
 | 1.0 | 2026-08-13 | Dev | Bản đầu, mô tả as-is + các mục `[SỬA]` đã chốt qua clarify |
 | 1.1 | 2026-08-13 | Dev | Fix 2 blocker + 6 warning từ `/nta-spec-review`: thêm `runs.operator_name` (blocker 1); thêm BR-13 chặn ghi vào run đã kết thúc (blocker 2); thêm luồng 8.4 archive quy trình; ghi rõ `list_runs` không lọc archived (BR-14); ghi rõ mọi command đều ghi DB; thay mô tả performance mơ hồ bằng chỉ tiêu đo được; thêm 5 test scenario; thêm bảng nhãn UI 11.1; thêm Q6, Q7 |
+| 1.4 | 2026-08-17 | Dev | Mở rộng phạm vi nền tảng sang macOS, không đổi hành vi nghiệp vụ nào: §1 mô tả sản phẩm là desktop Windows **và** macOS; §3 và §12 thay "Windows account" bằng "tài khoản hệ điều hành"; §6 thêm điều kiện thư mục dữ liệu theo từng OS và quyền Screen Recording của macOS; §15 thêm mục **Platform** ghi rõ hai chỗ khác nhau theo OS trong `lib.rs` và việc mỗi bộ cài phải build trên chính OS của nó |
 | 1.3 | 2026-08-14 | Dev | Sửa §5.2: `start_run` **bỏ tham số `operatorName`** thay vì "giữ nguyên chữ ký" như v1.2 ghi — nếu frontend còn truyền tên thì mục tiêu chống khai gian không đạt. Ghi rõ đây là chỗ v1.2 nói sai, kèm lý do, để người đọc sau không tưởng là quyết định bị đổi vô cớ. Các mục `[Phase 2]` khác của v1.2 vẫn đúng |
 | 1.2 | 2026-08-14 | Dev | Đồng bộ với `login-report-sharing.md` v1.0 theo §22 của tài liệu đó. Không đổi hành vi nào đang chạy — chỉ gỡ các khẳng định nay đã sai và đánh dấu `[Phase 2]` cho phần bị thay đổi: §1 bỏ "chạy offline" khỏi mô tả sản phẩm và thêm phạm vi tài liệu; §3 bổ sung Admin/Member; §5.2 `start_run` đổi nguồn `operatorName`; §6 thêm điều kiện đã đăng nhập; §10 BR-15 được BR-23 thay thế; §12 viết lại Authentication/Authorization/Rate limiting và thêm Data in transit; §15 tách rõ phần offline và phần cần server; §18 nâng ưu tiên Q1; §21 chuyển "định danh người dùng tập trung" từ ngoài scope vào Phase 2. Phase 1 + 1.1 được ghi nhận là **đã implement** |
 

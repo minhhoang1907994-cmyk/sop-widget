@@ -6,7 +6,7 @@
 - **Priority**: High
 - **Phase**: Phase 2 (Phase 1 + 1.1 là app offline đã hoàn thành)
 - **Ngày soạn**: 2026-08-14
-- **Version**: 1.3 (spec của feature; kéo theo `sop-widget.md` lên v1.3)
+- **Version**: 1.4 (spec của feature; `sop-widget.md` tương ứng ở v1.4)
 - **Trạng thái implement**: backend `server/` xong; phía app đã có đăng nhập, tạo tài khoản, gửi và nhận báo cáo. Còn lại xem §18.3
 - **Nguồn**: `docs/clarify/clarify_login-report-sharing.md` v1.0 — 5 vòng clarify với PM
 
@@ -150,7 +150,7 @@ The server address is **not** entered by the user. Tauri does not read `.env` fi
 | # | Source | Purpose |
 |---|---|---|
 | 1 | Environment variable `SOP_SERVER_URL` | Development, or pointing one machine at a different server without editing files |
-| 2 | File `%APPDATA%\NTA\SOP Widget\server.env`, key `SOP_SERVER_URL` | An administrator changes the server after installation — **no rebuild, no new installer** |
+| 2 | File `server.env` in the platform data directory (`%APPDATA%\NTA\SOP Widget` on Windows, `~/Library/Application Support/NTA/SOP Widget` on macOS), key `SOP_SERVER_URL` | An administrator changes the server after installation — **no rebuild, no new installer** |
 | 3 | `http://localhost:8080` | Fallback |
 
 `server.env` is created on first launch with the default value and a comment explaining how to change it, so an administrator opening the data folder finds the right file without documentation. The parser ignores blank lines and lines starting with `#`, and strips surrounding double quotes.
@@ -435,7 +435,7 @@ Trạng thái implement tính đến v1.3 được ghi thẳng trong bảng, đ�
 
 `ReportPage` (khi làm `list_sent`) mirror phản hồi API: `{ items: ReportSummary[], next_cursor: string | null }`.
 
-**`open_report_link` cố ý chỉ nhận `report_id`, không nhận URL.** URL do Rust dựng từ `server_url` của phiên hiện tại, sau khi kiểm `report_id` chỉ gồm chữ/số/dấu gạch ngang và `server_url` bắt đầu bằng `http://` hoặc `https://`. Nếu nhận URL từ frontend thì command này trở thành đường mở đường dẫn tùy ý. Mở bằng `rundll32 url.dll,FileProtocolHandler` với tham số truyền trực tiếp cho tiến trình, không qua shell — không thêm dependency và không bị chèn lệnh. Đổi sang `tauri-plugin-opener` sẽ cần thêm crate và permission trong `capabilities/default.json`.
+**`open_report_link` cố ý chỉ nhận `report_id`, không nhận URL.** URL do Rust dựng từ `server_url` của phiên hiện tại, sau khi kiểm `report_id` chỉ gồm chữ/số/dấu gạch ngang và `server_url` bắt đầu bằng `http://` hoặc `https://`. Nếu nhận URL từ frontend thì command này trở thành đường mở đường dẫn tùy ý. Lệnh mở chọn theo hệ điều hành: `rundll32 url.dll,FileProtocolHandler` trên Windows, `open` trên macOS — tham số truyền trực tiếp cho tiến trình, không qua shell, nên không thêm dependency và không bị chèn lệnh. Đổi sang `tauri-plugin-opener` sẽ cần thêm crate và permission trong `capabilities/default.json`.
 
 **Ràng buộc đã phát hiện khi implement**: `rusqlite::Connection` không `Send`, nên **không giữ được qua `.await`**. Mọi command async phải đóng scope DB trước khi gọi HTTP rồi mở lại sau — xem khuôn mẫu ở `logout`.
 
@@ -684,7 +684,7 @@ Passwords and raw tokens are never written to any log. Retention: see Q8.
 1. Đăng nhập sai mật khẩu 10 lần → lần 11 bị chặn bởi rate limit, message đúng
 2. Rút mạng khi đã đăng nhập → chạy trọn 1 SOP, chụp ảnh, xuất báo cáo ra máy đều thành công; nút gửi bị vô hiệu
 3. Rút mạng khi chưa đăng nhập → không vào được app, hiện đúng thông báo
-4. Gửi báo cáo trong lúc rút mạng giữa chừng → báo lỗi, file HTML vẫn nằm ở `%APPDATA%\NTA\SOP Widget\reports`, không tạo bản ghi trên server
+4. Gửi báo cáo trong lúc rút mạng giữa chừng → báo lỗi, file HTML vẫn nằm ở thư mục `reports` trong thư mục dữ liệu của app (`%APPDATA%\NTA\SOP Widget` trên Windows, `~/Library/Application Support/NTA/SOP Widget` trên macOS), không tạo bản ghi trên server
 5. Member C (không phải người gửi, không phải người nhận) gọi `GET /api/v1/reports/{id}/content` bằng token của mình → nhận `404`
 6. Member C mở link `/r/{id}` sau khi đã đăng nhập web → nhận `404`
 7. Admin đặt lại mật khẩu của member B khi B đang đăng nhập ở máy khác → thao tác kế tiếp của B trả `401`, B phải đăng nhập lại và bị buộc đổi mật khẩu
@@ -784,6 +784,7 @@ Sơ đồ trong `docs/diagram/` **đã cập nhật** cho kiến trúc v2.0 — 
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
+| 1.4 | 2026-08-17 | Dev | App mở rộng sang macOS, không đổi API hay hành vi nghiệp vụ nào: §4.4 nguồn cấu hình số 2 ghi `server.env` theo thư mục dữ liệu của từng OS thay vì chỉ `%APPDATA%`; §17 test scenario edge case #4 ghi cả hai đường dẫn. Lệnh mở link báo cáo (`open_report_link`) đổi theo OS ở phía Rust — hợp đồng command với frontend giữ nguyên |
 | 1.3 | 2026-08-14 | Dev | **Đồng bộ spec với code sau khi implement.** §4.2: `storage_path` lưu tương đối kèm chặn path traversal, ghi nhận bảng phụ `schema_migrations`. §4.3: thêm cột `auth_session.must_change_password`. **§4.4 mới**: cơ chế 3 tầng cấu hình địa chỉ máy chủ (env var → `server.env` tự sinh → mặc định) — **đảo Q13**, không hardcode cũng không cho người dùng nhập. §5.1: thêm `GET /healthz`, sửa cột Auth của `POST /logout` thành optional. §5.2: thêm `403 PASSWORD_CHANGE_REQUIRED` và ghi chú phân biệt hai loại 401. §5.3: viết lại bảng command — thêm cột **Status** đánh dấu 10 command đã làm / 4 chưa làm, sửa chữ ký `login` (bỏ `serverUrl`), thêm `server_url` và `open_report_link` kèm lý do chỉ nhận `report_id`, ghi lại ràng buộc `rusqlite::Connection` không `Send`. §18: tách thành 18.1 (8 câu đã có giá trị trong code, kèm nơi đặt giá trị), 18.2 (8 câu còn mở thật, thêm Q16 về token thô trong SQLite), 18.3 (việc chưa implement). §19: cập nhật dependency thực tế, **sửa nhận định sai của v1.2** về permission network, ghi rõ migration qua `schema_migrations` |
 | 1.0 | 2026-08-14 | Dev | Bản đầu, soạn từ `docs/clarify/clarify_login-report-sharing.md` v1.0 sau 5 vòng clarify với PM |
 | 1.2 | 2026-08-14 | Dev | Fix 5 warning ưu tiên từ lần review thứ hai: §5.2b làm rõ `first_viewed_at` chỉ ghi khi người xem là recipient (sender/admin không có row trong `report_recipients`); §5.3 thêm command `list_sent` và cho `list_inbox`/`list_sent` nhận `limit`/`cursor` khớp API, định nghĩa `ReportPage`; §5.2 thêm thứ tự validate `recipient_ids` 4 bước (loại trùng → loại sender → kiểm rỗng → kiểm tồn tại/active), làm rõ `NO_RECIPIENT` bao gồm trường hợp chỉ chọn chính mình; §4.2 quy định toàn bộ thời gian lưu UTC và `TZ=UTC` cho cả DB lẫn backend; thêm 4 test scenario tương ứng |

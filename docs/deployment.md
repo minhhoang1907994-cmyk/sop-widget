@@ -137,6 +137,21 @@ docker compose logs -f api   # xem log khởi động
 Migration **tự chạy** khi `api` khởi động (`src/index.ts` gọi `runMigrations()`), ghi tên file đã
 chạy vào bảng `schema_migrations` nên khởi động lại nhiều lần không sao.
 
+Cả hai service khai báo `restart: unless-stopped`, nên máy chủ khởi động lại (hoặc Docker daemon
+restart) thì container tự lên, không cần chạy tay. Dừng chủ động bằng `docker compose stop` vẫn
+có tác dụng — chỉ `up` mới bật lại.
+
+Hai chỗ dễ vấp khi build:
+
+1. **`dist/db/migrations` phải có trong image.** `tsc` chỉ sinh `.js` từ `.ts`, không mang theo
+   file `.sql`; `runMigrations()` lại đọc migrations ở thư mục cạnh chính nó. `Dockerfile` xử lý
+   bằng `COPY db/migrations ./dist/db/migrations` — bỏ dòng đó thì container chết ngay lúc khởi
+   động với `ENOENT: ... scandir '/app/dist/db/migrations'`.
+2. **Không mang `docker-compose.override.yml` của máy dev lên server.** Compose tự nạp file này
+   nếu nó tồn tại. Trên máy dev nó bind mount `./storage/reports`; trên server phải giữ volume
+   `report-data` như khai báo trong `docker-compose.yml`. File đó đã nằm trong `.gitignore` nên
+   `git pull` không kéo về — chỉ cần đừng copy tay.
+
 Kiểm tra server đã sống:
 
 ```bash
@@ -175,7 +190,8 @@ Phải trả về `token` và `must_change_password: true`.
 Trên **từng máy** cài SOP Widget, sửa file:
 
 ```
-%APPDATA%\NTA\SOP Widget\server.env
+Windows: %APPDATA%\NTA\SOP Widget\server.env
+macOS:   ~/Library/Application Support/NTA/SOP Widget/server.env
 ```
 
 ```ini
@@ -240,6 +256,6 @@ docker compose exec api node -e "import('@node-rs/argon2').then(a=>a.hash('<mậ
 
 ## Chưa kiểm chứng
 
-- **Image `api` chưa từng được build.** `docker compose up -d --build` là lần đầu — nếu lỗi,
-  khả năng cao nằm ở bước `npm install` của `@node-rs/argon2` trong image `node:24-slim`.
 - Toàn bộ hướng dẫn này viết từ cấu hình trong repo, **chưa chạy thật trên `54.178.76.191`**.
+  Riêng phần Docker đã được chạy thật trên máy dev Windows (2026-08-17): image `api` build
+  được, `@node-rs/argon2` cài sạch trong `node:24-slim`, `/healthz` trả `{"status":"ok"}`.

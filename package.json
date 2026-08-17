@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "tauri": "set \"CARGO_HOME=%USERPROFILE%\\.cargo\" && set \"RUSTUP_HOME=%USERPROFILE%\\.rustup\" && set \"PATH=%USERPROFILE%\\.cargo\\bin;%PATH%\" && tauri"
+    "tauri": "tauri",
+    "tauri:win": "set \"CARGO_HOME=%USERPROFILE%\\.cargo\" && set \"RUSTUP_HOME=%USERPROFILE%\\.rustup\" && set \"PATH=%USERPROFILE%\\.cargo\\bin;%PATH%\" && tauri"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",

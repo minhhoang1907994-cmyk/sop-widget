@@ -38,8 +38,17 @@ struct SharedReport { report_id: String, share_url: String, local_path: String, 
 #[derive(Debug, Serialize, Clone)]
 struct InboxItem { report_id: String, run_id: String, procedure_name: String, operator_display_name: String, sender_display_name: String, run_status: String, created_at: String, size_bytes: u64, first_viewed_at: Option<String>, share_url: String }
 
+#[cfg(not(target_os = "windows"))]
+fn home_dir() -> Result<PathBuf, String> { std::env::var_os("HOME").map(PathBuf::from).ok_or_else(|| "Không xác định được thư mục người dùng (thiếu biến HOME).".to_string()) }
+// Thư mục dữ liệu theo quy ước của từng hệ điều hành. Trên macOS KHÔNG được rơi về
+// current_dir(): bundle .app mở từ Finder có thư mục làm việc là `/`, ghi vào đó sẽ bị chặn.
 fn app_dir() -> Result<PathBuf, String> {
+  #[cfg(target_os = "windows")]
   let base = std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or(std::env::current_dir().map_err(|e| e.to_string())?);
+  #[cfg(target_os = "macos")]
+  let base = home_dir()?.join("Library").join("Application Support");
+  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+  let base = home_dir()?.join(".local").join("share");
   let dir = base.join("NTA").join("SOP Widget");
   fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
   Ok(dir)
@@ -304,8 +313,9 @@ async fn list_inbox() -> Result<Vec<InboxItem>, String> {
 }
 // Mở link báo cáo bằng trình duyệt mặc định.
 // Chỉ nhận `report_id` rồi tự dựng URL từ máy chủ của phiên hiện tại — frontend không truyền
-// được URL tùy ý vào đây. `rundll32 url.dll,FileProtocolHandler` là cách mở URL của Windows,
-// tham số truyền trực tiếp cho tiến trình (không qua shell) nên không bị chèn lệnh.
+// được URL tùy ý vào đây. Mỗi hệ điều hành có lệnh mở URL riêng: `rundll32 url.dll,FileProtocolHandler`
+// trên Windows, `open` trên macOS. Tham số truyền trực tiếp cho tiến trình (không qua shell)
+// nên không bị chèn lệnh.
 #[tauri::command]
 fn open_report_link(report_id: String) -> Result<String, String> {
   if report_id.is_empty() || !report_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
@@ -316,7 +326,13 @@ fn open_report_link(report_id: String) -> Result<String, String> {
     return Err("Địa chỉ máy chủ không hợp lệ.".into());
   }
   let url = format!("{base}/r/{report_id}");
-  std::process::Command::new("rundll32").arg("url.dll,FileProtocolHandler").arg(&url)
+  #[cfg(target_os = "windows")]
+  let (program, leading): (&str, &[&str]) = ("rundll32", &["url.dll,FileProtocolHandler"]);
+  #[cfg(target_os = "macos")]
+  let (program, leading): (&str, &[&str]) = ("open", &[]);
+  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+  let (program, leading): (&str, &[&str]) = ("xdg-open", &[]);
+  std::process::Command::new(program).args(leading).arg(&url)
     .spawn().map_err(|e| format!("Không mở được trình duyệt: {e}"))?;
   Ok(url)
 }

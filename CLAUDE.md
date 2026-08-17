@@ -1,6 +1,6 @@
 # SOP Widget
 
-Ứng dụng desktop Windows: tạo/chạy SOP theo từng bước, chụp ảnh bằng chứng, lưu SQLite local,
+Ứng dụng desktop chạy trên Windows và macOS: tạo/chạy SOP theo từng bước, chụp ảnh bằng chứng, lưu SQLite local,
 xuất báo cáo HTML. App **không** tự thực thi lệnh hay SSH — lệnh chỉ là hướng dẫn hiển thị
 cho người thực hiện.
 
@@ -16,7 +16,7 @@ hiện chỉ có backend.
 - Framework: React 18.3 + Vite 5.3 · Tauri 2.0 (desktop shell)
 - Database: SQLite local qua `rusqlite 0.32` (feature `bundled` — không cần cài SQLite ngoài)
 - Frontend: React 18 + CSS thuần (`src/styles.css`), không dùng UI library / CSS framework
-- Bundle: NSIS cho Windows (`tauri build`)
+- Bundle: NSIS cho Windows · `.app` + `.dmg` cho macOS (cùng lệnh `tauri build`, chạy trên chính OS đó)
 - Architecture: React SPA → Tauri IPC (`invoke`) → command trong `src-tauri/src/lib.rs` → SQLite
 - Thư viện chính khác: `screenshots 0.8` (chụp màn hình), `chrono`, `uuid` (v4), `serde`, `sha2`, `base64`
 
@@ -164,6 +164,10 @@ server/                 Backend Phase 2 — tài khoản + chia sẻ báo cáo
 ### Cấu hình cửa sổ widget
 - `tauri.conf.json`: `decorations: false`, `transparent: true`, `alwaysOnTop: true` — titlebar tự vẽ
   trong `App.tsx`, vùng kéo cửa sổ đánh dấu bằng `data-tauri-drag-region="true"`.
+- `transparent: true` chỉ có tác dụng trên macOS khi bật `app.macOSPrivateApi: true` **và** feature
+  `macos-private-api` của crate `tauri` trong `Cargo.toml`. Thiếu một trong hai thì build lỗi ngay ở
+  build script. Hệ quả: app dùng private API nên không nộp được lên Mac App Store — phân phối
+  trực tiếp bằng `.dmg`.
 - Gọi window API (`minimize`, `close`) phải qua `getCurrentWindow()` và **kiểm tra
   `__TAURI_INTERNALS__`** trước, có fallback cho môi trường browser thuần (`App.tsx:35-58`) — vì
   `npm run dev` chạy được ngoài Tauri.
@@ -188,11 +192,15 @@ server/                 Backend Phase 2 — tài khoản + chia sẻ báo cáo
 - Hỏi user trước khi thêm dependency test mới.
 
 ## Dữ liệu local
-- DB: `%APPDATA%\NTA\SOP Widget\sop-widget.db`
-- Ảnh bằng chứng: `%APPDATA%\NTA\SOP Widget\evidence\{run_id}\step-{step_id}-{timestamp}.png`
-- Báo cáo HTML: `%APPDATA%\NTA\SOP Widget\reports\report-{run_id}-{timestamp}.html`
+Thư mục gốc lấy từ `app_dir()` — Windows: `%APPDATA%\NTA\SOP Widget`; macOS:
+`~/Library/Application Support/NTA/SOP Widget`. Bên dưới thư mục gốc, cấu trúc giống nhau ở cả
+hai hệ điều hành:
 
-Đường dẫn gốc lấy từ `app_dir()` (`lib.rs:22`) — dựa trên env `APPDATA`, fallback `current_dir()`.
+- DB: `sop-widget.db`
+- Ảnh bằng chứng: `evidence/{run_id}/step-{step_id}-{timestamp}.png`
+- Báo cáo HTML: `reports/report-{run_id}-{timestamp}.html`
+
+Dữ liệu **không** dùng chung giữa hai máy — mỗi OS có DB và thư mục evidence riêng.
 
 ## Dữ liệu trên server
 - Hai database: **`sop_widget`** (dev/thật) và **`sop_widget_test`** (chỉ dành cho Vitest).
@@ -206,19 +214,31 @@ server/                 Backend Phase 2 — tài khoản + chia sẻ báo cáo
 
 ## Lệnh thường dùng
 
-### App desktop
+### App desktop — Windows
 ```powershell
 npm.cmd install
 
-# Dev (Tauri cần env Rust được set thủ công trên máy này)
-$env:RUSTUP_HOME = "$env:USERPROFILE\.rustup"
-$env:CARGO_HOME  = "$env:USERPROFILE\.cargo"
-npm.cmd run tauri dev
+# Dùng script tauri:win — nó tự set CARGO_HOME/RUSTUP_HOME/PATH cho máy này
+npm.cmd run tauri:win dev
+npm.cmd run tauri:win build   # Installer NSIS → src-tauri\target\release\bundle
 
 npm.cmd run dev            # Chỉ frontend trên http://localhost:1420 (window API sẽ fallback)
 npm.cmd run build          # tsc -b && vite build
-npm.cmd run tauri build    # Installer → src-tauri\target\release\bundle
 ```
+
+### App desktop — macOS
+```bash
+xcode-select --install     # cc + linker cho rusqlite bundled, chỉ cần chạy một lần
+npm install
+npm run tauri dev
+npm run tauri build        # .app + .dmg → src-tauri/target/release/bundle
+```
+
+Script `tauri` là bản thuần, không set biến môi trường — dùng cho macOS. Script `tauri:win` là
+bản bọc cú pháp `cmd` chỉ chạy được trên Windows; đừng gọi nó trên macOS.
+
+Chụp ảnh bằng chứng trên macOS cần quyền **System Settings → Privacy & Security → Screen
+Recording**; chưa cấp thì `capture_evidence` trả lỗi.
 
 Type check nhanh: `npx tsc -b --noEmit` · Rust: `cargo check --manifest-path src-tauri/Cargo.toml`
 
@@ -265,3 +285,8 @@ Docker Desktop phải chạy trước, nếu không `docker` báo không kết n
    connection string thật không bao giờ nằm trong repo.
 10. **Chưa deploy lên server thật khi chưa có HTTPS.** Máy chủ hiện cấu hình `http://` trên IP
     công cộng; báo cáo có thể chứa ảnh màn hình có credential. Chạy Docker local thì được.
+11. **Code phải build được cả Windows lẫn macOS.** Không gọi thẳng lệnh/đường dẫn riêng của một OS
+    trong code chung — tách bằng `#[cfg(target_os = "...")]` ngay tại chỗ, có nhánh cho cả
+    `windows` và `macos` (xem `app_dir()` và `open_report_link` trong `lib.rs`). Script npm đặc thù
+    Windows để riêng ở `tauri:win`, không nhét vào script dùng chung. Máy Windows **không** cross-build
+    được sang macOS (cần Objective-C toolchain của Apple) — nhánh macOS phải build/test trên chính Mac.
